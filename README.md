@@ -57,15 +57,21 @@ arnocodes/
 
 ### Using Docker Compose (Recommended)
 
+First, copy the environment file and customize if needed:
+```bash
+cp .env.example .env
+```
+
+Then start all services:
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 ```
 
 Services will be available at:

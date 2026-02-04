@@ -6,10 +6,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - PORT=8080
-      - DATABASE_URL=postgres://user:password@postgres:5432/dbname?sslmode=disable
+      - PORT=${BACKEND_PORT:-8080}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-dbname}?sslmode=disable
       - REDIS_URL=redis://redis:6379
-      - ENVIRONMENT=development
+      - ENVIRONMENT=${BACKEND_ENVIRONMENT:-development}
     depends_on:
       - postgres
       - redis
@@ -23,7 +23,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${FRONTEND_NODE_ENV:-production}
     networks:
       - arnocodes-network
 
@@ -34,17 +34,17 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - PORT=5000
-      - ENVIRONMENT=development
+      - PORT=${AI_PORT:-5000}
+      - ENVIRONMENT=${AI_ENVIRONMENT:-development}
     networks:
       - arnocodes-network
 
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=dbname
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-dbname}
     ports:
       - "5432:5432"
     volumes:

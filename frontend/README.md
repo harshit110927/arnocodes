@@ -27,7 +27,7 @@ npm start
 Create `.env.local` file for environment-specific configuration.
 
 ## Features
-- Next.js 14+ with App Router
+- Next.js 16+ with App Router
 - TypeScript support
 - React 18+
 - Minimal page setup
