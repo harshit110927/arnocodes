@@ -131,6 +131,12 @@ Each service has its own README with detailed setup instructions:
 - [Frontend README](./frontend/README.md)
 - [AI Service README](./ai/README.md)
 
+## Product Documentation
+
+- [Product Overview](./docs/PRODUCT.md)
+- [Database Schema](./docs/DB_SCHEMA.md)
+- [Development Cycle](./docs/DEVELOPMENT_CYCLE.md)
+
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
