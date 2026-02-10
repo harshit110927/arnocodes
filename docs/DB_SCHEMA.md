@@ -257,3 +257,45 @@ Stores rank snapshots for fast dashboard reads.
 - **Refresh strategy:** Update leaderboards on a schedule (cron) or on event boundaries (e.g., end of weekly cycle).
 - **Fairness:** For cross-platform comparisons, normalize by difficulty or time spent if needed.
 
+## Dashboard Aggregates (Recommended Additions)
+
+Dashboards typically read multiple metrics at once. To avoid heavy write amplification and frequent joins at scale, precompute a **daily dashboard snapshot** per user and hydrate the UI from this table.
+
+### 21. `dashboard_daily_snapshots`
+```sql
+dashboard_daily_snapshots (
+  user_id UUID REFERENCES profiles(id),
+  snapshot_date DATE,
+  streak_count INT,
+  questions_solved INT,
+  mastery_score FLOAT,
+  topics_completed INT,
+  last_activity_at TIMESTAMP,
+  computed_at TIMESTAMP,
+  PRIMARY KEY (user_id, snapshot_date)
+)
+```
+Stores rollups used for the dashboard (heatmap, streaks, mastery, and top-level progress).
+
+### Notes
+- **Write path:** Update via scheduled jobs or async workers to avoid synchronous writes on every user action.
+- **Read path:** The dashboard can read from this snapshot plus small deltas (e.g., last 24h activity) when needed.
+- **Retention:** Consider keeping a rolling window (e.g., 180 days) if storage is a concern.
+
+## Scaling Risks & Mitigations (Selected Tables)
+
+### `daily_activity`
+- **Risk:** High cardinality (user_id × date) can cause large scans for heatmaps and streaks.
+- **Mitigations:** Partition by date, index `(user_id, activity_date)`, and derive heatmap from `dashboard_daily_snapshots`.
+
+### `platform_activity`
+- **Risk:** Very high write volume with cross-platform sync; can become a hot table.
+- **Mitigations:** Partition by date, store deltas only, and aggregate into `dashboard_daily_snapshots`.
+
+### `tests` + `questions` + `test_attempts` + `question_attempts`
+- **Risk:** `question_attempts` grows fastest; joins across attempts can be expensive for analytics.
+- **Mitigations:** Partition attempt tables by time, add composite indexes `(attempt_id, question_id)` and `(user_id, submitted_at)`, and precompute analytics snapshots.
+
+### `events` + `event_participants`
+- **Risk:** Event-based leaderboards or rank queries can be expensive if computed on the fly.
+- **Mitigations:** Reuse `leaderboards` + `leaderboard_entries` for event scopes; store final ranks to avoid repeated recomputation.
