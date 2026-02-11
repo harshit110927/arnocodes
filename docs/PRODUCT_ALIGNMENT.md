@@ -13,21 +13,21 @@ This document maps required product actions to the **current repository implemen
 - `POST /query`
 - `POST /index`
 
-> Observation: Product-critical APIs for profile, learning, assessment, sync, and dashboard are not yet implemented in the backend service.
+> Observation: Backend now has versioned placeholder APIs for core domains; business logic wiring, persistence, and policy enforcement remain pending.
 
 ## Flow Coverage Matrix
 
 | Product Action | Schema Coverage | API Coverage | Status | Notes |
 |---|---|---|---|---|
-| Profile → Update profile | `profiles` exists | Missing | Partial | Need `PATCH /profiles/me` + validation/audit |
-| Profile → Connect platform | Missing dedicated table | Missing | Gap | Add platform connections + sync job model |
-| Learning → Complete learning question | `user_learning_question_activity` exists | Missing | Partial | Need idempotent completion endpoint |
-| Learning → Complete subtopic | `user_subtopic_progress` exists | Missing | Partial | Should auto-derive topic progress |
-| Assessment → Start test | `tests`, `test_attempts`, `questions` exist | Missing | Partial | Needs attempt status + timing state |
-| Assessment → Submit test | `test_attempts`, `question_attempts` exist | Missing | Partial | Needs explicit lifecycle and grading pipeline |
-| Platform sync → Trigger sync | `platform_activity` exists | Missing | Partial | Need `platform_connections` + `sync_jobs` |
+| Profile → Update profile | `profiles` exists | Available (placeholder) | Partial | Need persistence, validation, audit trail |
+| Profile → Connect platform | Missing dedicated table | Available (placeholder) | Partial | Add `platform_connections` + sync job model |
+| Learning → Complete learning question | `user_learning_question_activity` exists | Available (placeholder) | Partial | Add idempotency + scoring integration |
+| Learning → Complete subtopic | `user_subtopic_progress` exists | Available (placeholder) | Partial | Threshold validation present; add server-side mastery derivation |
+| Assessment → Start test | `tests`, `test_attempts`, `questions` exist | Available (placeholder) | Partial | Needs status machine + timing state persistence |
+| Assessment → Submit test | `test_attempts`, `question_attempts` exist | Available (placeholder) | Partial | Needs lifecycle transitions + grading pipeline |
+| Platform sync → Trigger sync | `platform_activity` exists | Available (placeholder) | Partial | Need `platform_connections` + `sync_jobs` persistence |
 | AI → Ask AI | `ai_usage`, `ai_query_gists` exist | Implemented only in AI service | Partial | Topic-restriction and quota policy enforcement missing |
-| AI → Use code helper step | Missing dedicated tables | Missing | Gap | Need session/step telemetry model |
+| AI → Use code helper step | Missing dedicated tables | Available (placeholder) | Partial | Need session/step telemetry model |
 
 ## Critical Gaps by Domain
 
@@ -41,8 +41,8 @@ This document maps required product actions to the **current repository implemen
 ### 3) Dashboard read model is still emerging
 - `dashboard_daily_snapshots` is recommended; endpoint layer and freshness strategy are still needed.
 
-### 4) API surface is far from product flow
-- Backend currently exposes only `/health`; all core product APIs are still pending.
+### 4) API surface needs service-layer wiring
+- Backend endpoint coverage exists, but handlers are still placeholders and need domain service/repository integration.
 
 ## Recommended Rollout Sequence (Corporate Team Style)
 
@@ -50,11 +50,10 @@ This document maps required product actions to the **current repository implemen
    - Finalize enums for assessment and progress states.
    - Add missing control-plane tables (`platform_connections`, `platform_sync_jobs`, `ai_code_helper_sessions`).
 
-2. **Core APIs (Backend v1)**
-   - Profile: `GET/PATCH /profiles/me`
-   - Learning: `POST /learning/questions/{id}/complete`, `POST /subtopics/{id}/complete`
-   - Assessment: `POST /tests/{id}/start`, `POST /attempts/{id}/answer`, `POST /attempts/{id}/submit`
-   - Sync: `POST /platform-sync/trigger`
+2. **Core APIs (Backend v1 with services)**
+   - Keep endpoints under `/api/v1/*` and wire handlers to service/repository layers.
+   - Enforce state-machine transitions for assessment and sync jobs.
+   - Add auth, idempotency keys, and quota checks before production rollout.
 
 3. **Read Models + Performance**
    - Enable snapshot jobs for dashboard and leaderboards.
@@ -71,3 +70,9 @@ This document maps required product actions to the **current repository implemen
 - Telemetry and dashboards
 - Updated docs in `/docs`
 
+
+
+## Architecture Decisions Added
+- All new endpoints are versioned under `/api/v1` to support backward-compatible evolution.
+- Subtopic completion is system-validated (mastery threshold) and should not accept blind completion writes.
+- Added optional `GET /api/v1/course/structure` as a single-call DAG read model to simplify onboarding and reduce client orchestration complexity.

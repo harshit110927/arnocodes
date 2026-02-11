@@ -33,47 +33,51 @@ Copy `.env.example` to `.env` and update the values:
 - `GET /health`
 
 ### Profile
-- `GET /profiles/me`
-- `PATCH /profiles/me`
-- `GET /profiles/me/platform-connections`
-- `POST /profiles/me/platform-connections`
-- `DELETE /profiles/me/platform-connections/{platform}`
+- `GET /api/v1/profiles/me`
+- `PATCH /api/v1/profiles/me`
+- `GET /api/v1/profiles/me/platform-connections`
+- `POST /api/v1/profiles/me/platform-connections`
+- `DELETE /api/v1/profiles/me/platform-connections/{platform}`
 
 ### Dashboard
-- `GET /dashboard/summary`
-- `GET /dashboard/heatmap`
-- `GET /dashboard/leaderboards`
+- `GET /api/v1/dashboard/summary`
+- `GET /api/v1/dashboard/heatmap`
+- `GET /api/v1/dashboard/leaderboards`
 
 ### Learning
-- `GET /topics`
-- `GET /topics/{topicId}`
-- `GET /topics/{topicId}/unlock-status`
-- `GET /subtopics/{subtopicId}`
-- `POST /learning/questions/{questionId}/complete`
-- `POST /subtopics/{subtopicId}/complete`
+- `GET /api/v1/course/structure`
+- `GET /api/v1/topics`
+- `GET /api/v1/topics/{topicId}`
+- `GET /api/v1/topics/{topicId}/unlock-status`
+- `GET /api/v1/subtopics/{subtopicId}`
+- `POST /api/v1/learning/questions/{questionId}/complete`
+- `POST /api/v1/subtopics/{subtopicId}/complete`
 
 ### Assessment
-- `GET /tests/{testId}`
-- `POST /tests/{testId}/start`
-- `GET /tests/{testId}/session`
-- `POST /test-attempts/{attemptId}/answers`
-- `POST /test-attempts/{attemptId}/submit`
-- `GET /test-attempts/{attemptId}/result`
-- `GET /test-attempts/{attemptId}/next-question`
-- `POST /test-attempts/{attemptId}/expire`
-- `POST /test-attempts/{attemptId}/resume`
+- `GET /api/v1/tests/{testId}`
+- `POST /api/v1/tests/{testId}/start`
+- `GET /api/v1/tests/{testId}/session`
+- `POST /api/v1/test-attempts/{attemptId}/answers`
+- `POST /api/v1/test-attempts/{attemptId}/submit`
+- `GET /api/v1/test-attempts/{attemptId}/result`
+- `GET /api/v1/test-attempts/{attemptId}/next-question`
+- `POST /api/v1/test-attempts/{attemptId}/expire`
+- `POST /api/v1/test-attempts/{attemptId}/resume`
 
 ### Platform sync
-- `POST /platform-sync/trigger`
-- `GET /platform-sync/jobs/{jobId}`
+- `POST /api/v1/platform-sync/trigger`
+- `GET /api/v1/platform-sync/jobs/{jobId}`
 
 ### AI gateway
-- `POST /ai/query`
-- `POST /ai/code-helper/step`
-- `GET /ai/usage`
+- `POST /api/v1/ai/query`
+- `POST /api/v1/ai/code-helper/step`
+- `GET /api/v1/ai/usage`
 
 ### Internal (cron/worker)
-- `POST /internal/recompute-dashboard`
-- `POST /internal/refresh-leaderboard`
+- `POST /api/v1/internal/recompute-dashboard`
+- `POST /api/v1/internal/refresh-leaderboard`
 
 > Note: most endpoints currently return structured placeholder responses and are ready to be wired to services/repositories.
+
+### Validation policy note
+- `POST /api/v1/subtopics/{subtopicId}/complete` is threshold-validated and should not allow blind completion writes.

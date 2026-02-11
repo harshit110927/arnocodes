@@ -6,10 +6,18 @@ import (
 	"strings"
 )
 
+const apiV1BasePath = "/api/v1"
+
+const masteryCompletionThreshold = 0.70
+
 type APIResponse struct {
 	Status  string      `json:"status"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
+}
+
+type subtopicCompletionRequest struct {
+	MasteryScore float64 `json:"mastery_score"`
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload APIResponse) {
@@ -23,6 +31,21 @@ func methodNotAllowed(w http.ResponseWriter) {
 		Status:  "error",
 		Message: "method not allowed",
 	})
+}
+
+func pathParts(path string) []string {
+	trimmed := strings.Trim(path, "/")
+	if strings.HasPrefix(trimmed, strings.Trim(apiV1BasePath, "/")+"/") {
+		trimmed = strings.TrimPrefix(trimmed, strings.Trim(apiV1BasePath, "/")+"/")
+	} else if trimmed == strings.Trim(apiV1BasePath, "/") {
+		trimmed = ""
+	}
+
+	if trimmed == "" {
+		return []string{}
+	}
+
+	return strings.Split(trimmed, "/")
 }
 
 func (h *Handler) ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,13 +76,13 @@ func (h *Handler) PlatformConnectionByNameHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 4 || parts[3] == "" {
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 5 || parts[4] == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "platform is required"})
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnect endpoint placeholder", Data: map[string]string{"platform": parts[3]}})
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnect endpoint placeholder", Data: map[string]string{"platform": parts[4]}})
 }
 
 func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,9 +109,16 @@ func (h *Handler) DashboardLeaderboardsHandler(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "dashboard leaderboard endpoint placeholder"})
 }
 
+func (h *Handler) CourseStructureHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "course structure endpoint placeholder"})
+}
+
 func (h *Handler) TopicsRouter(w http.ResponseWriter, r *http.Request) {
-	path := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(path, "/")
+	parts := pathParts(r.URL.Path)
 
 	if len(parts) == 1 && parts[0] == "topics" {
 		h.TopicsHandler(w, r)
@@ -153,12 +183,23 @@ func (h *Handler) CompleteSubtopicHandler(w http.ResponseWriter, r *http.Request
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "complete subtopic endpoint placeholder"})
+
+	var req subtopicCompletionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "invalid request body"})
+		return
+	}
+
+	if req.MasteryScore < masteryCompletionThreshold {
+		writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "mastery threshold not met; completion denied"})
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "subtopic completion accepted; pending server validation"})
 }
 
 func (h *Handler) SubtopicsRouter(w http.ResponseWriter, r *http.Request) {
-	path := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(path, "/")
+	parts := pathParts(r.URL.Path)
 
 	if len(parts) == 2 && parts[0] == "subtopics" {
 		h.SubtopicByIDHandler(w, r)
@@ -174,8 +215,7 @@ func (h *Handler) SubtopicsRouter(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LearningQuestionsRouter(w http.ResponseWriter, r *http.Request) {
-	path := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(path, "/")
+	parts := pathParts(r.URL.Path)
 	if len(parts) == 4 && parts[0] == "learning" && parts[1] == "questions" && parts[3] == "complete" {
 		h.CompleteLearningQuestionHandler(w, r)
 		return
@@ -209,8 +249,7 @@ func (h *Handler) TestSessionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) TestsRouter(w http.ResponseWriter, r *http.Request) {
-	path := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(path, "/")
+	parts := pathParts(r.URL.Path)
 
 	if len(parts) == 2 && parts[0] == "tests" {
 		h.TestByIDHandler(w, r)
@@ -279,8 +318,7 @@ func (h *Handler) AttemptResumeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) TestAttemptsRouter(w http.ResponseWriter, r *http.Request) {
-	path := strings.Trim(r.URL.Path, "/")
-	parts := strings.Split(path, "/")
+	parts := pathParts(r.URL.Path)
 	if len(parts) != 3 || parts[0] != "test-attempts" {
 		writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
 		return

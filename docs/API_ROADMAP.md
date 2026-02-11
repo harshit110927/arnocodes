@@ -7,47 +7,49 @@
 ## Required v1 API Surface
 
 ### Profile
-- `GET /profiles/me`
-- `PATCH /profiles/me`
-- `POST /profiles/me/platform-connections`
-- `DELETE /profiles/me/platform-connections/{platform}`
+- `GET /api/v1/profiles/me`
+- `PATCH /api/v1/profiles/me`
+- `POST /api/v1/profiles/me/platform-connections`
+- `DELETE /api/v1/profiles/me/platform-connections/{platform}`
 
 ### Dashboard
-- `GET /dashboard/summary`
-- `GET /dashboard/heatmap?from=&to=`
-- `GET /dashboard/leaderboards?scope=&window=`
+- `GET /api/v1/dashboard/summary`
+- `GET /api/v1/dashboard/heatmap?from=&to=`
+- `GET /api/v1/dashboard/leaderboards?scope=&window=`
 
 ### Learning
-- `GET /topics`
-- `GET /topics/{topicId}`
-- `GET /subtopics/{subtopicId}`
-- `POST /learning/questions/{questionId}/complete`
-- `POST /subtopics/{subtopicId}/complete`
+- `GET /api/v1/course/structure` (optional but recommended single-call DAG read model)
+- `GET /api/v1/topics`
+- `GET /api/v1/topics/{topicId}`
+- `GET /api/v1/topics/{topicId}/unlock-status`
+- `GET /api/v1/subtopics/{subtopicId}`
+- `POST /api/v1/learning/questions/{questionId}/complete`
+- `POST /api/v1/subtopics/{subtopicId}/complete`
 
 ### Assessment
-- `GET /tests/{testId}`
-- `POST /tests/{testId}/start`
-- `GET /tests/{testId}/session`
-- `POST /test-attempts/{attemptId}/answers`
-- `POST /test-attempts/{attemptId}/submit`
-- `GET /test-attempts/{attemptId}/result`
-- `GET /test-attempts/{attemptId}/next-question`
-- `POST /test-attempts/{attemptId}/expire`
-- `POST /test-attempts/{attemptId}/resume`
+- `GET /api/v1/tests/{testId}`
+- `POST /api/v1/tests/{testId}/start`
+- `GET /api/v1/tests/{testId}/session`
+- `POST /api/v1/test-attempts/{attemptId}/answers`
+- `POST /api/v1/test-attempts/{attemptId}/submit`
+- `GET /api/v1/test-attempts/{attemptId}/result`
+- `GET /api/v1/test-attempts/{attemptId}/next-question`
+- `POST /api/v1/test-attempts/{attemptId}/expire`
+- `POST /api/v1/test-attempts/{attemptId}/resume`
 
 ### Platform Sync
-- `GET /profiles/me/platform-connections`
-- `POST /platform-sync/trigger`
-- `GET /platform-sync/jobs/{jobId}`
+- `GET /api/v1/profiles/me/platform-connections`
+- `POST /api/v1/platform-sync/trigger`
+- `GET /api/v1/platform-sync/jobs/{jobId}`
 
 ### AI
-- `POST /ai/query`
-- `POST /ai/code-helper/step`
-- `GET /ai/usage`
+- `POST /api/v1/ai/query`
+- `POST /api/v1/ai/code-helper/step`
+- `GET /api/v1/ai/usage`
 
 ### Internal (Worker/Cron only)
-- `POST /internal/recompute-dashboard`
-- `POST /internal/refresh-leaderboard`
+- `POST /api/v1/internal/recompute-dashboard`
+- `POST /api/v1/internal/refresh-leaderboard`
 
 ## API Design Principles
 - Idempotency keys for mutation endpoints where retries are likely (`/start`, `/submit`, `/trigger`).
@@ -55,3 +57,7 @@
 - Standardized response envelope and trace IDs.
 - AuthZ at user scope (`me`) and event scope.
 
+
+## Validation and Integrity Notes
+- `POST /api/v1/subtopics/{subtopicId}/complete` must be system-validated; completion should only be accepted when mastery threshold is met.
+- In production, mastery should come from server-side scoring signals (question activity, correctness, time profile), not blind client trust.
