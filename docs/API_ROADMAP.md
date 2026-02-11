@@ -50,6 +50,8 @@
 ### Internal (Worker/Cron only)
 - `POST /api/v1/internal/recompute-dashboard`
 - `POST /api/v1/internal/refresh-leaderboard`
+- `GET /api/v1/internal/api-catalog`
+- `POST /api/v1/internal/api-smoke-check`
 
 ## API Design Principles
 - Idempotency keys for mutation endpoints where retries are likely (`/start`, `/submit`, `/trigger`).

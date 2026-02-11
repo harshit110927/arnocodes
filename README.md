@@ -138,6 +138,7 @@ Each service has its own README with detailed setup instructions:
 - [Development Cycle](./docs/DEVELOPMENT_CYCLE.md)
 - [Product Alignment Review](./docs/PRODUCT_ALIGNMENT.md)
 - [API Roadmap](./docs/API_ROADMAP.md)
+- [Frontend Helper Guide](./docs/FRONTEND_HELPER.md)
 
 ## License
 

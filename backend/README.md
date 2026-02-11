@@ -76,8 +76,20 @@ Copy `.env.example` to `.env` and update the values:
 ### Internal (cron/worker)
 - `POST /api/v1/internal/recompute-dashboard`
 - `POST /api/v1/internal/refresh-leaderboard`
+- `GET /api/v1/internal/api-catalog`
+- `POST /api/v1/internal/api-smoke-check`
 
 > Note: most endpoints currently return structured placeholder responses and are ready to be wired to services/repositories.
 
 ### Validation policy note
 - `POST /api/v1/subtopics/{subtopicId}/complete` is threshold-validated and should not allow blind completion writes.
+
+
+## API Skeleton Check (No DB Required)
+Use the skeleton verification endpoint to validate all registered APIs before wiring database/services:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/internal/api-smoke-check
+```
+
+The response includes total/passed/failed and endpoint-level status checks.

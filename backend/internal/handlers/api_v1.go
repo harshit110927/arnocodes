@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 )
 
 const apiV1BasePath = "/api/v1"
@@ -77,12 +79,12 @@ func (h *Handler) PlatformConnectionByNameHandler(w http.ResponseWriter, r *http
 	}
 
 	parts := pathParts(r.URL.Path)
-	if len(parts) < 5 || parts[4] == "" {
+	if len(parts) < 4 || parts[3] == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "platform is required"})
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnect endpoint placeholder", Data: map[string]string{"platform": parts[4]}})
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnect endpoint placeholder", Data: map[string]string{"platform": parts[3]}})
 }
 
 func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -380,6 +382,23 @@ func (h *Handler) AIUsageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "ai usage endpoint placeholder"})
+}
+
+func (h *Handler) APICatalogHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "api catalog", Data: skeleton.APICatalog()})
+}
+
+func (h *Handler) APISmokeCheckHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	report := skeleton.RunSmokeCheck(h.router)
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "api smoke check completed", Data: report})
 }
 
 func (h *Handler) InternalRecomputeDashboardHandler(w http.ResponseWriter, r *http.Request) {

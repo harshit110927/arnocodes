@@ -9,6 +9,7 @@ import (
 
 type Handler struct {
 	config *config.Config
+	router http.Handler
 }
 
 func NewHandler(cfg *config.Config) *Handler {

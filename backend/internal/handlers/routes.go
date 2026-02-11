@@ -3,6 +3,7 @@ package handlers
 import "net/http"
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	h.router = mux
 	mux.HandleFunc("/health", h.HealthHandler)
 	mux.HandleFunc(apiV1BasePath+"/health", h.HealthHandler)
 
@@ -32,4 +33,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc(apiV1BasePath+"/internal/recompute-dashboard", h.InternalRecomputeDashboardHandler)
 	mux.HandleFunc(apiV1BasePath+"/internal/refresh-leaderboard", h.InternalRefreshLeaderboardHandler)
+	mux.HandleFunc(apiV1BasePath+"/internal/api-catalog", h.APICatalogHandler)
+	mux.HandleFunc(apiV1BasePath+"/internal/api-smoke-check", h.APISmokeCheckHandler)
 }

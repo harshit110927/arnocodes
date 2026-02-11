@@ -131,3 +131,23 @@ func TestCourseStructureEndpoint(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 }
+
+func TestAPICatalogEndpoint(t *testing.T) {
+	mux := setupMux()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/internal/api-catalog", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestAPISmokeCheckEndpoint(t *testing.T) {
+	mux := setupMux()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/internal/api-smoke-check", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
