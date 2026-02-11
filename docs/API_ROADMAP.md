@@ -1,8 +1,8 @@
 # API Roadmap (Based on Product Requirements)
 
 ## Current State
-- Backend currently exposes only `GET /health`.
-- AI service exposes `GET /health`, `POST /query`, `POST /index`.
+- Backend now exposes health plus placeholder endpoints for profile, dashboard, learning, assessment, platform sync, AI gateway, and internal recompute jobs.
+- AI service exposes `GET /health`, `POST /query`, `POST /index` (RAG placeholder implementation).
 
 ## Required v1 API Surface
 
@@ -27,17 +27,27 @@
 ### Assessment
 - `GET /tests/{testId}`
 - `POST /tests/{testId}/start`
-- `POST /attempts/{attemptId}/answers`
-- `POST /attempts/{attemptId}/submit`
-- `GET /attempts/{attemptId}/result`
+- `GET /tests/{testId}/session`
+- `POST /test-attempts/{attemptId}/answers`
+- `POST /test-attempts/{attemptId}/submit`
+- `GET /test-attempts/{attemptId}/result`
+- `GET /test-attempts/{attemptId}/next-question`
+- `POST /test-attempts/{attemptId}/expire`
+- `POST /test-attempts/{attemptId}/resume`
 
 ### Platform Sync
+- `GET /profiles/me/platform-connections`
 - `POST /platform-sync/trigger`
 - `GET /platform-sync/jobs/{jobId}`
 
 ### AI
 - `POST /ai/query`
 - `POST /ai/code-helper/step`
+- `GET /ai/usage`
+
+### Internal (Worker/Cron only)
+- `POST /internal/recompute-dashboard`
+- `POST /internal/refresh-leaderboard`
 
 ## API Design Principles
 - Idempotency keys for mutation endpoints where retries are likely (`/start`, `/submit`, `/trigger`).
