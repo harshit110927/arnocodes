@@ -63,3 +63,18 @@
 ## Validation and Integrity Notes
 - `POST /api/v1/subtopics/{subtopicId}/complete` must be system-validated; completion should only be accepted when mastery threshold is met.
 - In production, mastery should come from server-side scoring signals (question activity, correctness, time profile), not blind client trust.
+
+
+## Diagnostic Test Engine Rollout
+1. `GET /api/v1/tests/{testId}`
+2. `POST /api/v1/tests/{testId}/start`
+3. `GET /api/v1/test-attempts/{attemptId}/next-question`
+4. `POST /api/v1/test-attempts/{attemptId}/answers`
+5. `POST /api/v1/test-attempts/{attemptId}/submit`
+6. Dashboard gate (`403 TEST_REQUIRED`) until diagnostic submit
+
+
+## Assessment request examples (local)
+- Start attempt: `POST /api/v1/tests/diagnostic-1/start` with `{ "topics_known": ["arrays", "strings"] }`.
+- Submit answer: `POST /api/v1/test-attempts/{attemptId}/answers` with `{ "question_id": "q-1", "selected_option": 2 }`.
+- Session restore: `GET /api/v1/tests/diagnostic-1/session?attempt_id={attemptId}`.

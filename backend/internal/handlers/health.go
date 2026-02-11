@@ -5,16 +5,19 @@ import (
 	"net/http"
 
 	"github.com/harshit110927/arnocodes/backend/config"
+	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 )
 
 type Handler struct {
-	config *config.Config
-	router http.Handler
+	config           *config.Config
+	router           http.Handler
+	assessmentEngine *assessment.Service
 }
 
 func NewHandler(cfg *config.Config) *Handler {
 	return &Handler{
-		config: cfg,
+		config:           cfg,
+		assessmentEngine: assessment.NewService(),
 	}
 }
 

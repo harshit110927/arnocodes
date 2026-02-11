@@ -114,7 +114,8 @@ questions (
   content TEXT,
   options JSONB,
   correct_option INT,
-  marks INT
+  marks INT,
+  order_index INT
 )
 ```
 Assessment questions for tests.
@@ -414,3 +415,16 @@ Recommended new columns:
 - Enables resumable tests and deterministic timeout behavior.
 - Supports proctoring and fairness analytics with better state history.
 
+
+
+## Diagnostic Test Rules (Onboarding)
+
+For `tests.type = 'diagnostic'`:
+- one attempt only per user (unless admin reset)
+- dashboard remains locked until submitted
+- score is snapshot-based after submit and attempt is immutable
+
+Recommended indexes:
+- `test_attempts(user_id, test_id)`
+- `questions(test_id, order_index)`
+- `question_attempts(attempt_id, question_id)`

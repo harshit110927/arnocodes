@@ -13,6 +13,7 @@ All feature calls should go to `${BACKEND_BASE_URL}${API_PREFIX}/...`.
 Create a thin client wrapper with:
 - `request(method, path, body?)`
 - automatic JSON headers
+- `X-User-ID` header support (required for stateful assessment simulation in local mode)
 - typed response envelope: `{ status, message, data }`
 - centralized error handling for `4xx/5xx`
 
@@ -78,3 +79,6 @@ Before DB integration, add temporary QA screens:
   - common response envelope shape
 - Replace placeholder assumptions with typed DTO contracts once services are wired.
 
+
+## 8) Companion backend test doc
+For backend-first API testing commands (curl + JSON payloads), see `docs/API_LOCAL_TESTING.md`.

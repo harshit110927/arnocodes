@@ -93,3 +93,9 @@ curl -X POST http://localhost:8080/api/v1/internal/api-smoke-check
 ```
 
 The response includes total/passed/failed and endpoint-level status checks.
+
+
+### Assessment implementation note
+- Assessment endpoints are now backed by an in-memory service (`internal/assessment`) for local development.
+- Use `X-User-ID` header to simulate per-user attempt state during local testing.
+- `POST /api/v1/tests/diagnostic-1/start` accepts `{"topics_known": ["arrays", "strings"]}` and enforces diagnostic one-attempt policy.

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 )
 
@@ -48,6 +50,31 @@ func pathParts(path string) []string {
 	}
 
 	return strings.Split(trimmed, "/")
+}
+
+func currentUserID(r *http.Request) string {
+	userID := strings.TrimSpace(r.Header.Get("X-User-ID"))
+	if userID == "" {
+		return "demo-user"
+	}
+	return userID
+}
+
+func writeAssessmentError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, assessment.ErrTestNotFound), errors.Is(err, assessment.ErrAttemptNotFound), errors.Is(err, assessment.ErrInvalidQuestionID):
+		writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: err.Error()})
+	case errors.Is(err, assessment.ErrAttemptAlreadyDone):
+		writeJSON(w, http.StatusForbidden, APIResponse{Status: "error", Message: err.Error()})
+	case errors.Is(err, assessment.ErrNoQuestionsForTopics), errors.Is(err, assessment.ErrQuestionOutOfOrder):
+		writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: err.Error()})
+	case errors.Is(err, assessment.ErrAttemptExpired):
+		writeJSON(w, http.StatusGone, APIResponse{Status: "error", Message: err.Error()})
+	case errors.Is(err, assessment.ErrAttemptNotActive):
+		writeJSON(w, http.StatusConflict, APIResponse{Status: "error", Message: err.Error()})
+	default:
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "internal error"})
+	}
 }
 
 func (h *Handler) ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +258,22 @@ func (h *Handler) TestByIDHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "test details endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "test id is required"})
+		return
+	}
+	testID := parts[1]
+	topics := []string{}
+	if raw := r.URL.Query().Get("topics"); raw != "" {
+		topics = strings.Split(raw, ",")
+	}
+	view, err := h.assessmentEngine.GetTestView(testID, topics)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "test details", Data: view})
 }
 
 func (h *Handler) TestStartHandler(w http.ResponseWriter, r *http.Request) {
@@ -239,7 +281,26 @@ func (h *Handler) TestStartHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "start test endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "test id is required"})
+		return
+	}
+	testID := parts[1]
+	var req struct {
+		TopicsKnown []string `json:"topics_known"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	attempt, created, err := h.assessmentEngine.StartAttempt(currentUserID(r), testID, req.TopicsKnown)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	msg := "attempt resumed"
+	if created {
+		msg = "attempt started"
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: msg, Data: map[string]interface{}{"attempt_id": attempt.ID, "status": attempt.Status, "topics_known": attempt.TopicsKnown}})
 }
 
 func (h *Handler) TestSessionHandler(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +308,22 @@ func (h *Handler) TestSessionHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "active test session endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "test id is required"})
+		return
+	}
+	attemptID := r.URL.Query().Get("attempt_id")
+	if attemptID == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt_id query param is required"})
+		return
+	}
+	session, err := h.assessmentEngine.GetSession(currentUserID(r), attemptID)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "active test session", Data: session})
 }
 
 func (h *Handler) TestsRouter(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +352,26 @@ func (h *Handler) AttemptAnswerHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submit answer endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	var req struct {
+		QuestionID     string `json:"question_id"`
+		SelectedOption int    `json:"selected_option"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "invalid request body"})
+		return
+	}
+	res, err := h.assessmentEngine.SubmitAnswer(currentUserID(r), attemptID, req.QuestionID, req.SelectedOption)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "answer accepted", Data: res})
 }
 
 func (h *Handler) AttemptSubmitHandler(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +379,18 @@ func (h *Handler) AttemptSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submit attempt endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	result, err := h.assessmentEngine.SubmitAttempt(currentUserID(r), attemptID)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt submitted", Data: result})
 }
 
 func (h *Handler) AttemptResultHandler(w http.ResponseWriter, r *http.Request) {
@@ -292,7 +398,18 @@ func (h *Handler) AttemptResultHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "attempt result endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	result, err := h.assessmentEngine.GetResult(currentUserID(r), attemptID)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "attempt result", Data: result})
 }
 
 func (h *Handler) AttemptNextQuestionHandler(w http.ResponseWriter, r *http.Request) {
@@ -300,7 +417,18 @@ func (h *Handler) AttemptNextQuestionHandler(w http.ResponseWriter, r *http.Requ
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "next question endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	question, err := h.assessmentEngine.NextQuestion(currentUserID(r), attemptID)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "next question", Data: question})
 }
 
 func (h *Handler) AttemptExpireHandler(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +436,17 @@ func (h *Handler) AttemptExpireHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt expire endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	if err := h.assessmentEngine.ExpireAttempt(currentUserID(r), attemptID); err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt expired"})
 }
 
 func (h *Handler) AttemptResumeHandler(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +454,18 @@ func (h *Handler) AttemptResumeHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt resume endpoint placeholder"})
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "attempt id is required"})
+		return
+	}
+	attemptID := parts[1]
+	attempt, err := h.assessmentEngine.ResumeAttempt(currentUserID(r), attemptID)
+	if err != nil {
+		writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt resumed", Data: map[string]interface{}{"attempt_id": attempt.ID, "status": attempt.Status}})
 }
 
 func (h *Handler) TestAttemptsRouter(w http.ResponseWriter, r *http.Request) {

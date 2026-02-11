@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 )
 
 type EndpointSpec struct {
@@ -49,15 +50,15 @@ func APICatalog() []EndpointSpec {
 		{Name: "Subtopic by id", Method: http.MethodGet, Path: "/api/v1/subtopics/subtopic-1", ExpectedStatus: http.StatusOK},
 		{Name: "Complete learning question", Method: http.MethodPost, Path: "/api/v1/learning/questions/question-1/complete", ExpectedStatus: http.StatusAccepted},
 		{Name: "Complete subtopic", Method: http.MethodPost, Path: "/api/v1/subtopics/subtopic-1/complete", ExpectedStatus: http.StatusAccepted, Body: `{"mastery_score":0.9}`},
-		{Name: "Test by id", Method: http.MethodGet, Path: "/api/v1/tests/test-1", ExpectedStatus: http.StatusOK},
-		{Name: "Start test", Method: http.MethodPost, Path: "/api/v1/tests/test-1/start", ExpectedStatus: http.StatusAccepted},
-		{Name: "Test session", Method: http.MethodGet, Path: "/api/v1/tests/test-1/session", ExpectedStatus: http.StatusOK},
-		{Name: "Submit answer", Method: http.MethodPost, Path: "/api/v1/test-attempts/attempt-1/answers", ExpectedStatus: http.StatusAccepted},
-		{Name: "Submit attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/attempt-1/submit", ExpectedStatus: http.StatusAccepted},
-		{Name: "Attempt result", Method: http.MethodGet, Path: "/api/v1/test-attempts/attempt-1/result", ExpectedStatus: http.StatusOK},
-		{Name: "Next question", Method: http.MethodGet, Path: "/api/v1/test-attempts/attempt-1/next-question", ExpectedStatus: http.StatusOK},
-		{Name: "Expire attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/attempt-1/expire", ExpectedStatus: http.StatusAccepted},
-		{Name: "Resume attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/attempt-1/resume", ExpectedStatus: http.StatusAccepted},
+		{Name: "Test by id", Method: http.MethodGet, Path: "/api/v1/tests/diagnostic-1?topics=arrays,strings", ExpectedStatus: http.StatusOK},
+		{Name: "Start test", Method: http.MethodPost, Path: "/api/v1/tests/diagnostic-1/start", ExpectedStatus: http.StatusAccepted, Body: `{"topics_known":["arrays","strings"]}`},
+		{Name: "Test session", Method: http.MethodGet, Path: "/api/v1/tests/diagnostic-1/session?attempt_id={attempt_id}", ExpectedStatus: http.StatusOK},
+		{Name: "Next question", Method: http.MethodGet, Path: "/api/v1/test-attempts/{attempt_id}/next-question", ExpectedStatus: http.StatusOK},
+		{Name: "Submit answer", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/answers", ExpectedStatus: http.StatusAccepted, Body: `{"question_id":"{question_id}","selected_option":2}`},
+		{Name: "Submit attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/submit", ExpectedStatus: http.StatusAccepted},
+		{Name: "Attempt result", Method: http.MethodGet, Path: "/api/v1/test-attempts/{attempt_id}/result", ExpectedStatus: http.StatusOK},
+		{Name: "Expire attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/expire", ExpectedStatus: http.StatusConflict},
+		{Name: "Resume attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/resume", ExpectedStatus: http.StatusConflict},
 		{Name: "Trigger platform sync", Method: http.MethodPost, Path: "/api/v1/platform-sync/trigger", ExpectedStatus: http.StatusAccepted},
 		{Name: "Platform sync job", Method: http.MethodGet, Path: "/api/v1/platform-sync/jobs/job-1", ExpectedStatus: http.StatusOK},
 		{Name: "AI query", Method: http.MethodPost, Path: "/api/v1/ai/query", ExpectedStatus: http.StatusAccepted},
@@ -68,22 +69,56 @@ func APICatalog() []EndpointSpec {
 	}
 }
 
+func replaceVars(s, attemptID, questionID string) string {
+	s = strings.ReplaceAll(s, "{attempt_id}", attemptID)
+	s = strings.ReplaceAll(s, "{question_id}", questionID)
+	return s
+}
+
 func RunSmokeCheck(handler http.Handler) SmokeCheckReport {
 	specs := APICatalog()
 	results := make([]EndpointCheckResult, 0, len(specs))
 	passed := 0
+	attemptID := ""
+	questionID := "q-1"
 
 	for _, spec := range specs {
+		path := replaceVars(spec.Path, attemptID, questionID)
+		bodyText := replaceVars(spec.Body, attemptID, questionID)
 		body := bytes.NewBuffer(nil)
-		if spec.Body != "" {
-			body = bytes.NewBufferString(spec.Body)
+		if bodyText != "" {
+			body = bytes.NewBufferString(bodyText)
 		}
-		req := httptest.NewRequest(spec.Method, spec.Path, body)
-		if spec.Body != "" {
+		req := httptest.NewRequest(spec.Method, path, body)
+		req.Header.Set("X-User-ID", "smoke-user")
+		if bodyText != "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
+
+		if spec.Name == "Start test" && rr.Code == http.StatusAccepted {
+			var payload struct {
+				Data map[string]interface{} `json:"data"`
+			}
+			_ = json.NewDecoder(rr.Body).Decode(&payload)
+			if v, ok := payload.Data["attempt_id"].(string); ok {
+				attemptID = v
+			}
+		}
+		if spec.Name == "Next question" && rr.Code == http.StatusOK {
+			var payload struct {
+				Data struct {
+					Question struct {
+						ID string `json:"id"`
+					} `json:"question"`
+				} `json:"data"`
+			}
+			_ = json.NewDecoder(rr.Body).Decode(&payload)
+			if payload.Data.Question.ID != "" {
+				questionID = payload.Data.Question.ID
+			}
+		}
 
 		ok := rr.Code == spec.ExpectedStatus
 		if ok {
@@ -93,19 +128,14 @@ func RunSmokeCheck(handler http.Handler) SmokeCheckReport {
 		results = append(results, EndpointCheckResult{
 			Name:           spec.Name,
 			Method:         spec.Method,
-			Path:           spec.Path,
+			Path:           path,
 			ExpectedStatus: spec.ExpectedStatus,
 			ActualStatus:   rr.Code,
 			Passed:         ok,
 		})
 	}
 
-	return SmokeCheckReport{
-		Total:   len(specs),
-		Passed:  passed,
-		Failed:  len(specs) - passed,
-		Results: results,
-	}
+	return SmokeCheckReport{Total: len(specs), Passed: passed, Failed: len(specs) - passed, Results: results}
 }
 
 func (r SmokeCheckReport) JSON() ([]byte, error) {
