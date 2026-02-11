@@ -299,3 +299,118 @@ Stores rollups used for the dashboard (heatmap, streaks, mastery, and top-level 
 ### `events` + `event_participants`
 - **Risk:** Event-based leaderboards or rank queries can be expensive if computed on the fly.
 - **Mitigations:** Reuse `leaderboards` + `leaderboard_entries` for event scopes; store final ranks to avoid repeated recomputation.
+
+## Domain Enums (Strongly Recommended)
+
+Use PostgreSQL enums (or constrained check columns) for consistency and safer query semantics.
+
+### Assessment enums
+```sql
+-- test_attempts.status
+CREATE TYPE test_attempt_status AS ENUM (
+  'started',
+  'in_progress',
+  'submitted',
+  'auto_submitted',
+  'expired',
+  'abandoned'
+);
+
+-- question_attempts.state
+CREATE TYPE question_attempt_state AS ENUM (
+  'not_visited',
+  'visited',
+  'answered',
+  'skipped',
+  'marked_for_review'
+);
+```
+
+### Learning enums
+```sql
+-- user_subtopic_progress.status / user_topic_progress.status
+CREATE TYPE learning_progress_status AS ENUM (
+  'not_started',
+  'in_progress',
+  'completed',
+  'mastered'
+);
+```
+
+### Event + sync enums
+```sql
+CREATE TYPE event_phase AS ENUM ('registration', 'active', 'evaluation', 'completed', 'archived');
+CREATE TYPE event_participant_status AS ENUM ('registered', 'active', 'disqualified', 'completed');
+CREATE TYPE sync_job_status AS ENUM ('queued', 'running', 'succeeded', 'failed', 'rate_limited');
+```
+
+## Additional Tables Needed for Product Flows
+
+### 22. `platform_connections`
+```sql
+platform_connections (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  platform TEXT, -- leetcode | codeforces | gfg
+  platform_handle TEXT,
+  access_token_ref TEXT NULL, -- token reference / secret id
+  status TEXT, -- connected | disconnected | invalid
+  connected_at TIMESTAMP,
+  last_validated_at TIMESTAMP,
+  UNIQUE (user_id, platform)
+)
+```
+Stores source-of-truth for “Connect platform” flow.
+
+### 23. `platform_sync_jobs`
+```sql
+platform_sync_jobs (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  connection_id UUID REFERENCES platform_connections(id),
+  status sync_job_status,
+  trigger_source TEXT, -- user | scheduler | admin
+  started_at TIMESTAMP,
+  finished_at TIMESTAMP,
+  error_message TEXT NULL
+)
+```
+Supports “Trigger sync”, retries, and observability.
+
+### 24. `ai_code_helper_sessions`
+```sql
+ai_code_helper_sessions (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  topic_id UUID REFERENCES topics(id),
+  question_id UUID NULL REFERENCES learning_questions(id),
+  step_index INT,
+  max_steps INT,
+  status TEXT, -- active | completed | abandoned
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+```
+Tracks structured step-by-step code helper usage.
+
+## Assessment Table Refinements
+
+### `test_attempts` (additions)
+Recommended new columns:
+- `status test_attempt_status NOT NULL`
+- `started_at TIMESTAMP NOT NULL`
+- `expires_at TIMESTAMP NOT NULL`
+- `submitted_at TIMESTAMP NULL`
+- `evaluation_version TEXT NULL`
+
+### `question_attempts` (additions)
+Recommended new columns:
+- `state question_attempt_state NOT NULL`
+- `answered_at TIMESTAMP NULL`
+- `is_marked_for_review BOOLEAN DEFAULT FALSE`
+
+### Why this matters
+- Prevents ambiguous states in start/submit flows.
+- Enables resumable tests and deterministic timeout behavior.
+- Supports proctoring and fairness analytics with better state history.
+
