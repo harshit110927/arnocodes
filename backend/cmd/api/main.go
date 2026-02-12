@@ -18,7 +18,7 @@ func main() {
 
 	// Setup routes
 	mux := http.NewServeMux()
-	mux.HandleFunc("/health", h.HealthHandler)
+	h.RegisterRoutes(mux)
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.Port)
