@@ -1,9 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE TABLE IF NOT EXISTS auth.users (
-  id UUID PRIMARY KEY
-);
+-- CREATE SCHEMA IF NOT EXISTS auth;
+-- CREATE TABLE IF NOT EXISTS auth.users (
+--   id UUID PRIMARY KEY
+-- );
 
 DO $$
 BEGIN
@@ -28,7 +28,7 @@ BEGIN
 END $$;
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  id UUID PRIMARY KEY, --REFERENCES auth.users(id),
   full_name TEXT,
   college TEXT,
   graduation_year INT
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS leaderboards (
   name TEXT,
   leaderboard_type TEXT,
   scope_id UUID,
-  window TEXT,
+  time_window TEXT,
   metric TEXT,
   starts_at TIMESTAMP,
   ends_at TIMESTAMP,
