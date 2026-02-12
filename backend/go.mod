@@ -7,4 +7,3 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
-replace github.com/jackc/pgx/v5 => ./third_party/pgxv5

@@ -69,3 +69,7 @@ with HTTP `403`.
 - `POST /api/v1/internal/recompute-dashboard`
 - `POST /api/v1/internal/refresh-leaderboard`
 
+
+
+## Supabase Local Testing
+For full local clone + Supabase setup and troubleshooting, see `../docs/LOCAL_SUPABASE_SETUP.md`.

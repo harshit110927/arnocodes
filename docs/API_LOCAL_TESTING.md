@@ -47,3 +47,6 @@ Use psql and verify:
 - `questions` contains slide+mcq seed rows
 - `topics`, `subtopics`, `learning_questions` contain seed rows
 
+
+
+For local machine + Supabase DB connection setup, see `docs/LOCAL_SUPABASE_SETUP.md`.

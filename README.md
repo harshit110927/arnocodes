@@ -142,6 +142,7 @@ Each service has its own README with detailed setup instructions:
 - [Assessment Engine Guide](./docs/ASSESSMENT_ENGINE.md)
 - [API Local Testing Playbook](./docs/API_LOCAL_TESTING.md)
 - [Codebase Guide](./docs/CODEBASE_GUIDE.md)
+- [Local Supabase Setup Guide](./docs/LOCAL_SUPABASE_SETUP.md)
 
 ## License
 
