@@ -21,6 +21,7 @@ curl -s -X POST http://localhost:8080/api/v1/internal/api-smoke-check | jq
 ## 3) Profile APIs
 ```bash
 curl -s http://localhost:8080/api/v1/profiles/me | jq
+curl -s http://localhost:8080/api/v1/profiles/me/status | jq
 curl -s -X PATCH http://localhost:8080/api/v1/profiles/me \
   -H 'Content-Type: application/json' \
   -d '{"full_name":"Alice","college":"ABC College","graduation_year":2027}' | jq
@@ -32,6 +33,7 @@ curl -s -X DELETE http://localhost:8080/api/v1/profiles/me/platform-connections/
 ```
 
 ## 4) Dashboard APIs
+Before diagnostic completion, expect `403` + `DIAGNOSTIC_REQUIRED`:
 ```bash
 curl -s http://localhost:8080/api/v1/dashboard/summary | jq
 curl -s 'http://localhost:8080/api/v1/dashboard/heatmap?from=2026-01-01&to=2026-01-31' | jq
@@ -149,3 +151,9 @@ curl -s -X POST http://localhost:8080/api/v1/internal/refresh-leaderboard | jq
 - response envelope shape
 
 It does not validate DB persistence yet.
+
+After Step E, protected endpoints should unlock for the same `X-User-ID`:
+```bash
+curl -s http://localhost:8080/api/v1/profiles/me/status -H "X-User-ID: $USER_ID" | jq
+curl -s http://localhost:8080/api/v1/dashboard/summary -H "X-User-ID: $USER_ID" | jq
+```

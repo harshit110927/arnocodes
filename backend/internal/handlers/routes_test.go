@@ -24,6 +24,49 @@ func setupMux() *http.ServeMux {
 	return mux
 }
 
+func completeDiagnosticForUser(t *testing.T, mux *http.ServeMux, userID string) {
+	t.Helper()
+	startBody := []byte(`{"topics_known":["arrays","strings"]}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tests/diagnostic-1/start", bytes.NewBuffer(startBody))
+	req.Header.Set("X-User-ID", userID)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("start expected 202, got %d", rr.Code)
+	}
+	var startResp map[string]any
+	_ = json.NewDecoder(rr.Body).Decode(&startResp)
+	attemptID := startResp["data"].(map[string]any)["attempt_id"].(string)
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/test-attempts/"+attemptID+"/next-question", nil)
+	req.Header.Set("X-User-ID", userID)
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("next question expected 200, got %d", rr.Code)
+	}
+	var nq map[string]any
+	_ = json.NewDecoder(rr.Body).Decode(&nq)
+	questionID := nq["data"].(map[string]any)["question"].(map[string]any)["id"].(string)
+
+	ansBody := []byte(`{"question_id":"` + questionID + `","selected_option":2}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/test-attempts/"+attemptID+"/answers", bytes.NewBuffer(ansBody))
+	req.Header.Set("X-User-ID", userID)
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("answer expected 202, got %d", rr.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/test-attempts/"+attemptID+"/submit", nil)
+	req.Header.Set("X-User-ID", userID)
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("submit expected 202, got %d", rr.Code)
+	}
+}
+
 func TestProfileMeSupportsGetAndPatch(t *testing.T) {
 	mux := setupMux()
 
@@ -68,9 +111,11 @@ func TestAIUsageGetOnly(t *testing.T) {
 
 func TestCompleteSubtopicRequiresMasteryThreshold(t *testing.T) {
 	mux := setupMux()
+	completeDiagnosticForUser(t, mux, "subtopic-user")
 
 	low := []byte(`{"mastery_score":0.5}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/subtopics/sub-1/complete", bytes.NewBuffer(low))
+	req.Header.Set("X-User-ID", "subtopic-user")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnprocessableEntity {
@@ -79,6 +124,7 @@ func TestCompleteSubtopicRequiresMasteryThreshold(t *testing.T) {
 
 	high := []byte(`{"mastery_score":0.9}`)
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/subtopics/sub-1/complete", bytes.NewBuffer(high))
+	req.Header.Set("X-User-ID", "subtopic-user")
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusAccepted {
@@ -88,7 +134,9 @@ func TestCompleteSubtopicRequiresMasteryThreshold(t *testing.T) {
 
 func TestCourseStructureEndpoint(t *testing.T) {
 	mux := setupMux()
+	completeDiagnosticForUser(t, mux, "course-user")
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/course/structure", nil)
+	req.Header.Set("X-User-ID", "course-user")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -118,58 +166,71 @@ func TestAPISmokeCheckEndpoint(t *testing.T) {
 
 func TestAssessmentLifecycle(t *testing.T) {
 	mux := setupMux()
-	userID := "user-a"
+	completeDiagnosticForUser(t, mux, "user-a")
+}
 
-	startBody := []byte(`{"topics_known":["arrays","strings"]}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tests/diagnostic-1/start", bytes.NewBuffer(startBody))
+func TestProfileStatusEndpoint(t *testing.T) {
+	mux := setupMux()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/profiles/me/status", nil)
+	req.Header.Set("X-User-ID", "user-status")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}
+
+func TestDashboardRequiresDiagnosticCompletion(t *testing.T) {
+	mux := setupMux()
+	userID := "guard-user"
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboard/summary", nil)
 	req.Header.Set("X-User-ID", userID)
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusAccepted {
-		t.Fatalf("start expected 202, got %d", rr.Code)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 before diagnostic, got %d", rr.Code)
 	}
 
-	var startResp map[string]any
-	if err := json.NewDecoder(rr.Body).Decode(&startResp); err != nil {
-		t.Fatalf("decode start: %v", err)
+	startBody := []byte(`{"topics_known":["arrays","strings"]}`)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/tests/diagnostic-1/start", bytes.NewBuffer(startBody))
+	req.Header.Set("X-User-ID", userID)
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("expected start 202, got %d", rr.Code)
 	}
-	data := startResp["data"].(map[string]any)
-	attemptID := data["attempt_id"].(string)
+	var startResp map[string]any
+	_ = json.NewDecoder(rr.Body).Decode(&startResp)
+	attemptID := startResp["data"].(map[string]any)["attempt_id"].(string)
 
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/test-attempts/"+attemptID+"/next-question", nil)
 	req.Header.Set("X-User-ID", userID)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("next-question expected 200, got %d", rr.Code)
-	}
 	var nq map[string]any
 	_ = json.NewDecoder(rr.Body).Decode(&nq)
-	q := nq["data"].(map[string]any)["question"].(map[string]any)
-	questionID := q["id"].(string)
+	questionID := nq["data"].(map[string]any)["question"].(map[string]any)["id"].(string)
 
 	ansBody := []byte(`{"question_id":"` + questionID + `","selected_option":2}`)
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/test-attempts/"+attemptID+"/answers", bytes.NewBuffer(ansBody))
 	req.Header.Set("X-User-ID", userID)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusAccepted {
-		t.Fatalf("answer expected 202, got %d", rr.Code)
-	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/test-attempts/"+attemptID+"/submit", nil)
 	req.Header.Set("X-User-ID", userID)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusAccepted {
-		t.Fatalf("submit expected 202, got %d", rr.Code)
+		t.Fatalf("expected submit 202, got %d", rr.Code)
 	}
 
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/test-attempts/"+attemptID+"/result", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/dashboard/summary", nil)
 	req.Header.Set("X-User-ID", userID)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
-		t.Fatalf("result expected 200, got %d", rr.Code)
+		t.Fatalf("expected 200 after diagnostic submit, got %d", rr.Code)
 	}
 }

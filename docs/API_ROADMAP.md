@@ -9,6 +9,7 @@
 ### Profile
 - `GET /api/v1/profiles/me`
 - `PATCH /api/v1/profiles/me`
+- `GET /api/v1/profiles/me/status`
 - `POST /api/v1/profiles/me/platform-connections`
 - `DELETE /api/v1/profiles/me/platform-connections/{platform}`
 
@@ -78,3 +79,9 @@
 - Start attempt: `POST /api/v1/tests/diagnostic-1/start` with `{ "topics_known": ["arrays", "strings"] }`.
 - Submit answer: `POST /api/v1/test-attempts/{attemptId}/answers` with `{ "question_id": "q-1", "selected_option": 2 }`.
 - Session restore: `GET /api/v1/tests/diagnostic-1/session?attempt_id={attemptId}`.
+
+
+## Protected resources policy
+- Dashboard and learning resources are backend-protected until diagnostic test is submitted.
+- If not completed, APIs return `403` with `{ "error": "DIAGNOSTIC_REQUIRED" }`.
+- Frontend should read `GET /api/v1/profiles/me/status` and render lock states accordingly.

@@ -108,6 +108,11 @@ type ResultView struct {
 	AnswerReport []QuestionAttempt `json:"answer_report"`
 }
 
+type DiagnosticStatus struct {
+	DiagnosticCompleted bool `json:"diagnostic_completed"`
+	DashboardUnlocked   bool `json:"dashboard_unlocked"`
+}
+
 type Service struct {
 	mu                sync.RWMutex
 	tests             map[string]Test
@@ -413,4 +418,21 @@ func (s *Service) ResumeAttempt(userID, attemptID string) (*Attempt, error) {
 	}
 	a.Status = AttemptInProgress
 	return a, nil
+}
+
+func (s *Service) DiagnosticStatusForUser(userID string) DiagnosticStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	key := userID + "::" + "diagnostic-1"
+	attemptID, ok := s.attemptByUserTest[key]
+	if !ok {
+		return DiagnosticStatus{DiagnosticCompleted: false, DashboardUnlocked: false}
+	}
+
+	attempt := s.attempts[attemptID]
+	if attempt == nil || attempt.Status != AttemptSubmitted {
+		return DiagnosticStatus{DiagnosticCompleted: false, DashboardUnlocked: false}
+	}
+	return DiagnosticStatus{DiagnosticCompleted: true, DashboardUnlocked: true}
 }

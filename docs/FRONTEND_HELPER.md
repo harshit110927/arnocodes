@@ -28,6 +28,7 @@ Use these to verify your frontend route map and to gate CI for mock-integration 
 
 ### Profile
 - Fetch profile: `GET /api/v1/profiles/me`
+- Fetch status: `GET /api/v1/profiles/me/status`
 - Update profile: `PATCH /api/v1/profiles/me`
 - Connect/list/disconnect platform
 
@@ -82,3 +83,8 @@ Before DB integration, add temporary QA screens:
 
 ## 8) Companion backend test doc
 For backend-first API testing commands (curl + JSON payloads), see `docs/API_LOCAL_TESTING.md`.
+
+## 9) Protected resource behavior
+- Dashboard/learning APIs are backend-guarded.
+- Before diagnostic submit, expect `403` with `{ "error": "DIAGNOSTIC_REQUIRED" }`.
+- Frontend should show lock icon/state using `/profiles/me/status` and route users to diagnostic flow.

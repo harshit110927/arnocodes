@@ -77,6 +77,26 @@ func writeAssessmentError(w http.ResponseWriter, err error) {
 	}
 }
 
+func (h *Handler) ensureDiagnosticCompleted(w http.ResponseWriter, r *http.Request) bool {
+	status := h.assessmentEngine.DiagnosticStatusForUser(currentUserID(r))
+	if status.DiagnosticCompleted {
+		return true
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "DIAGNOSTIC_REQUIRED"})
+	return false
+}
+
+func (h *Handler) ProfileStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	status := h.assessmentEngine.DiagnosticStatusForUser(currentUserID(r))
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "profile status", Data: status})
+}
+
 func (h *Handler) ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -115,6 +135,9 @@ func (h *Handler) PlatformConnectionByNameHandler(w http.ResponseWriter, r *http
 }
 
 func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -123,6 +146,9 @@ func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) DashboardHeatmapHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -131,6 +157,9 @@ func (h *Handler) DashboardHeatmapHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) DashboardLeaderboardsHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -139,6 +168,9 @@ func (h *Handler) DashboardLeaderboardsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *Handler) CourseStructureHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -176,6 +208,9 @@ func (h *Handler) TopicUnlockStatusHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *Handler) TopicsHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -184,6 +219,9 @@ func (h *Handler) TopicsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) TopicByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -192,6 +230,9 @@ func (h *Handler) TopicByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SubtopicByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
@@ -200,6 +241,9 @@ func (h *Handler) SubtopicByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CompleteLearningQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)
 		return
@@ -208,6 +252,9 @@ func (h *Handler) CompleteLearningQuestionHandler(w http.ResponseWriter, r *http
 }
 
 func (h *Handler) CompleteSubtopicHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)
 		return

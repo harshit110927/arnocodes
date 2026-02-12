@@ -35,6 +35,7 @@ Copy `.env.example` to `.env` and update the values:
 ### Profile
 - `GET /api/v1/profiles/me`
 - `PATCH /api/v1/profiles/me`
+- `GET /api/v1/profiles/me/status`
 - `GET /api/v1/profiles/me/platform-connections`
 - `POST /api/v1/profiles/me/platform-connections`
 - `DELETE /api/v1/profiles/me/platform-connections/{platform}`
@@ -99,3 +100,5 @@ The response includes total/passed/failed and endpoint-level status checks.
 - Assessment endpoints are now backed by an in-memory service (`internal/assessment`) for local development.
 - Use `X-User-ID` header to simulate per-user attempt state during local testing.
 - `POST /api/v1/tests/diagnostic-1/start` accepts `{"topics_known": ["arrays", "strings"]}` and enforces diagnostic one-attempt policy.
+
+- Protected dashboard/learning endpoints return `403` with `DIAGNOSTIC_REQUIRED` until the diagnostic test is submitted for that user.

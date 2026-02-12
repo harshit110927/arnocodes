@@ -8,6 +8,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(apiV1BasePath+"/health", h.HealthHandler)
 
 	mux.HandleFunc(apiV1BasePath+"/profiles/me", h.ProfileMeHandler)
+	mux.HandleFunc(apiV1BasePath+"/profiles/me/status", h.ProfileStatusHandler)
 	mux.HandleFunc(apiV1BasePath+"/profiles/me/platform-connections", h.PlatformConnectionsHandler)
 	mux.HandleFunc(apiV1BasePath+"/profiles/me/platform-connections/", h.PlatformConnectionByNameHandler)
 

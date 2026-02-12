@@ -76,3 +76,8 @@ This document maps required product actions to the **current repository implemen
 - All new endpoints are versioned under `/api/v1` to support backward-compatible evolution.
 - Subtopic completion is system-validated (mastery threshold) and should not accept blind completion writes.
 - Added optional `GET /api/v1/course/structure` as a single-call DAG read model to simplify onboarding and reduce client orchestration complexity.
+
+
+## Access Control Enforcement
+- Protected resources now require diagnostic completion and return `403 DIAGNOSTIC_REQUIRED` when blocked.
+- Frontend should consume `/api/v1/profiles/me/status` for lock rendering, but authorization remains backend-enforced.

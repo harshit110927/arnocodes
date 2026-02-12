@@ -98,3 +98,13 @@ The backend now includes an in-memory assessment engine for local development (n
 - result fetch, expire, resume endpoints
 
 This lets frontend test complete onboarding assessment flow before DB wiring.
+
+## 10) Backend access control guard
+Protected APIs (dashboard, learning content, leaderboards) must enforce diagnostic completion in backend.
+If diagnostic is incomplete, return:
+```json
+{ "error": "DIAGNOSTIC_REQUIRED" }
+```
+with `403 Forbidden`.
+
+Frontend lock icon is UX only; backend check is the actual authorization control.
