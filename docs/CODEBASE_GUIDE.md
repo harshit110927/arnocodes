@@ -36,3 +36,24 @@ This document helps a new developer quickly understand the repository and develo
 5. `docs/API_LOCAL_TESTING.md`
 6. `docs/FRONTEND_HELPER.md`
 
+
+
+## 6) Backend infrastructure tree (current)
+```
+backend/
+├── cmd/api/main.go
+├── config/config.go
+├── internal/
+│   ├── database/
+│   │   ├── connection.go
+│   │   ├── migrate.go
+│   │   ├── seed.go
+│   │   └── migrations/001_init.sql
+│   ├── assessment/repository.go
+│   ├── learning/repository.go
+│   ├── dashboard/repository.go
+│   └── handlers/
+│       ├── health.go
+│       ├── routes.go
+│       └── api_v1.go
+```

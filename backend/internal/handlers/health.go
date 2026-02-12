@@ -6,18 +6,24 @@ import (
 
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
+	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
 
 type Handler struct {
-	config           *config.Config
-	router           http.Handler
-	assessmentEngine *assessment.Service
+	config         *config.Config
+	router         http.Handler
+	assessmentRepo *assessment.Repository
+	learningRepo   *learning.Repository
+	dashboardRepo  *dashboard.Repository
 }
 
-func NewHandler(cfg *config.Config) *Handler {
+func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, learningRepo *learning.Repository, dashboardRepo *dashboard.Repository) *Handler {
 	return &Handler{
-		config:           cfg,
-		assessmentEngine: assessment.NewService(),
+		config:         cfg,
+		assessmentRepo: assessmentRepo,
+		learningRepo:   learningRepo,
+		dashboardRepo:  dashboardRepo,
 	}
 }
 
@@ -27,12 +33,8 @@ type HealthResponse struct {
 }
 
 func (h *Handler) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	response := HealthResponse{
-		Status:      "healthy",
-		Environment: h.config.Environment,
-	}
-
+	response := HealthResponse{Status: "healthy", Environment: h.config.Environment}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }

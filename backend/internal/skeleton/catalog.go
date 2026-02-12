@@ -49,19 +49,19 @@ func APICatalog() []EndpointSpec {
 		{Name: "Submit answer", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/answers", ExpectedStatus: http.StatusAccepted, Body: `{"question_id":"{question_id}","selected_option":2}`},
 		{Name: "Submit attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/submit", ExpectedStatus: http.StatusAccepted},
 		{Name: "Attempt result", Method: http.MethodGet, Path: "/api/v1/test-attempts/{attempt_id}/result", ExpectedStatus: http.StatusOK},
-		{Name: "Expire attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/expire", ExpectedStatus: http.StatusConflict},
-		{Name: "Resume attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/resume", ExpectedStatus: http.StatusConflict},
+		{Name: "Expire attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/expire", ExpectedStatus: http.StatusAccepted},
+		{Name: "Resume attempt", Method: http.MethodPost, Path: "/api/v1/test-attempts/{attempt_id}/resume", ExpectedStatus: http.StatusAccepted},
 
-		{Name: "Dashboard summary", Method: http.MethodGet, Path: "/api/v1/dashboard/summary", ExpectedStatus: http.StatusOK},
-		{Name: "Dashboard heatmap", Method: http.MethodGet, Path: "/api/v1/dashboard/heatmap?from=2026-01-01&to=2026-01-31", ExpectedStatus: http.StatusOK},
-		{Name: "Dashboard leaderboard", Method: http.MethodGet, Path: "/api/v1/dashboard/leaderboards?scope=global&window=weekly", ExpectedStatus: http.StatusOK},
-		{Name: "Course structure", Method: http.MethodGet, Path: "/api/v1/course/structure", ExpectedStatus: http.StatusOK},
-		{Name: "Topics", Method: http.MethodGet, Path: "/api/v1/topics", ExpectedStatus: http.StatusOK},
-		{Name: "Topic by id", Method: http.MethodGet, Path: "/api/v1/topics/topic-1", ExpectedStatus: http.StatusOK},
+		{Name: "Dashboard summary", Method: http.MethodGet, Path: "/api/v1/dashboard/summary", ExpectedStatus: http.StatusForbidden},
+		{Name: "Dashboard heatmap", Method: http.MethodGet, Path: "/api/v1/dashboard/heatmap?from=2026-01-01&to=2026-01-31", ExpectedStatus: http.StatusForbidden},
+		{Name: "Dashboard leaderboard", Method: http.MethodGet, Path: "/api/v1/dashboard/leaderboards?scope=global&window=weekly", ExpectedStatus: http.StatusForbidden},
+		{Name: "Course structure", Method: http.MethodGet, Path: "/api/v1/course/structure", ExpectedStatus: http.StatusForbidden},
+		{Name: "Topics", Method: http.MethodGet, Path: "/api/v1/topics", ExpectedStatus: http.StatusForbidden},
+		{Name: "Topic by id", Method: http.MethodGet, Path: "/api/v1/topics/topic-1", ExpectedStatus: http.StatusForbidden},
 		{Name: "Topic unlock status", Method: http.MethodGet, Path: "/api/v1/topics/topic-1/unlock-status", ExpectedStatus: http.StatusOK},
-		{Name: "Subtopic by id", Method: http.MethodGet, Path: "/api/v1/subtopics/subtopic-1", ExpectedStatus: http.StatusOK},
-		{Name: "Complete learning question", Method: http.MethodPost, Path: "/api/v1/learning/questions/question-1/complete", ExpectedStatus: http.StatusAccepted},
-		{Name: "Complete subtopic", Method: http.MethodPost, Path: "/api/v1/subtopics/subtopic-1/complete", ExpectedStatus: http.StatusAccepted, Body: `{"mastery_score":0.9}`},
+		{Name: "Subtopic by id", Method: http.MethodGet, Path: "/api/v1/subtopics/subtopic-1", ExpectedStatus: http.StatusForbidden},
+		{Name: "Complete learning question", Method: http.MethodPost, Path: "/api/v1/learning/questions/question-1/complete", ExpectedStatus: http.StatusForbidden},
+		{Name: "Complete subtopic", Method: http.MethodPost, Path: "/api/v1/subtopics/subtopic-1/complete", ExpectedStatus: http.StatusForbidden, Body: `{"mastery_score":0.9}`},
 
 		{Name: "Trigger platform sync", Method: http.MethodPost, Path: "/api/v1/platform-sync/trigger", ExpectedStatus: http.StatusAccepted},
 		{Name: "Platform sync job", Method: http.MethodGet, Path: "/api/v1/platform-sync/jobs/job-1", ExpectedStatus: http.StatusOK},
@@ -83,7 +83,7 @@ func RunSmokeCheck(handler http.Handler) SmokeCheckReport {
 	specs := APICatalog()
 	results := make([]EndpointCheckResult, 0, len(specs))
 	passed := 0
-	attemptID := ""
+	attemptID := "attempt-1"
 	questionID := "q-1"
 
 	for _, spec := range specs {

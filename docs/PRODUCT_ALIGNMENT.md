@@ -23,8 +23,8 @@ This document maps required product actions to the **current repository implemen
 | Profile → Connect platform | Missing dedicated table | Available (placeholder) | Partial | Add `platform_connections` + sync job model |
 | Learning → Complete learning question | `user_learning_question_activity` exists | Available (placeholder) | Partial | Add idempotency + scoring integration |
 | Learning → Complete subtopic | `user_subtopic_progress` exists | Available (placeholder) | Partial | Threshold validation present; add server-side mastery derivation |
-| Assessment → Start test | `tests`, `test_attempts`, `questions` exist | Available (in-memory logic) | Partial | DB persistence + auth middleware pending |
-| Assessment → Submit test | `test_attempts`, `question_attempts` exist | Available (in-memory logic) | Partial | DB persistence + deterministic timers pending |
+| Assessment → Start test | `tests`, `test_attempts`, `questions` exist | Available (repository stub) | Partial | DB persistence + auth middleware pending |
+| Assessment → Submit test | `test_attempts`, `question_attempts` exist | Available (repository stub) | Partial | DB persistence + deterministic timers pending |
 | Platform sync → Trigger sync | `platform_activity` exists | Available (placeholder) | Partial | Need `platform_connections` + `sync_jobs` persistence |
 | AI → Ask AI | `ai_usage`, `ai_query_gists` exist | Implemented only in AI service | Partial | Topic-restriction and quota policy enforcement missing |
 | AI → Use code helper step | Missing dedicated tables | Available (placeholder) | Partial | Need session/step telemetry model |

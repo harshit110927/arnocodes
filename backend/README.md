@@ -1,36 +1,41 @@
 # Backend (Go)
 
 ## Description
-Backend service built with Go, featuring a clean modular architecture.
+Backend service built with Go, PostgreSQL-ready infrastructure, and clean modular architecture.
 
 ## Structure
-- `cmd/api/` - Application entry point
-- `internal/` - Internal packages
-  - `handlers/` - HTTP handlers
-  - `database/` - Database connections (PostgreSQL and Redis placeholders)
-- `config/` - Configuration management
+- `cmd/api/` - application entry point
+- `config/` - configuration management
+- `internal/database/` - connection, migrations, seeding
+- `internal/handlers/` - HTTP handlers and route registration
+- `internal/assessment/` - assessment repository skeleton
+- `internal/learning/` - learning repository skeleton
+- `internal/dashboard/` - dashboard repository skeleton
 
 ## Running Locally
-
 ```bash
-# Install dependencies
-go mod download
-
-# Run the server
+cd backend
+go mod tidy
 go run cmd/api/main.go
 ```
 
 ## Environment Variables
-Copy `.env.example` to `.env` and update the values:
-- `PORT` - Server port (default: 8080)
+- `PORT` - server port (default: 8080)
 - `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
-- `ENVIRONMENT` - Environment name (development/production)
+- `REDIS_URL` - reserved for future Redis usage
+- `ENVIRONMENT` - environment name
 
-## Endpoints (current placeholders + health)
+## Startup Lifecycle
+On startup backend now does:
+1. DB connection initialization via `pgxpool`
+2. Idempotent migration runner (`schema_migrations`)
+3. Idempotent seed runner (sample diagnostic/test/topic records)
+4. Repository initialization and handler wiring
 
+## API Endpoints (skeleton + guards)
 ### Health
 - `GET /health`
+- `GET /api/v1/health`
 
 ### Profile
 - `GET /api/v1/profiles/me`
@@ -40,21 +45,14 @@ Copy `.env.example` to `.env` and update the values:
 - `POST /api/v1/profiles/me/platform-connections`
 - `DELETE /api/v1/profiles/me/platform-connections/{platform}`
 
-### Dashboard
-- `GET /api/v1/dashboard/summary`
-- `GET /api/v1/dashboard/heatmap`
-- `GET /api/v1/dashboard/leaderboards`
+### Protected resources
+Dashboard and learning APIs are backend guarded. If diagnostic is incomplete they return:
+```json
+{ "error": "DIAGNOSTIC_REQUIRED" }
+```
+with HTTP `403`.
 
-### Learning
-- `GET /api/v1/course/structure`
-- `GET /api/v1/topics`
-- `GET /api/v1/topics/{topicId}`
-- `GET /api/v1/topics/{topicId}/unlock-status`
-- `GET /api/v1/subtopics/{subtopicId}`
-- `POST /api/v1/learning/questions/{questionId}/complete`
-- `POST /api/v1/subtopics/{subtopicId}/complete`
-
-### Assessment
+### Assessment (repository-backed stubs for business logic phase)
 - `GET /api/v1/tests/{testId}`
 - `POST /api/v1/tests/{testId}/start`
 - `GET /api/v1/tests/{testId}/session`
@@ -65,40 +63,9 @@ Copy `.env.example` to `.env` and update the values:
 - `POST /api/v1/test-attempts/{attemptId}/expire`
 - `POST /api/v1/test-attempts/{attemptId}/resume`
 
-### Platform sync
-- `POST /api/v1/platform-sync/trigger`
-- `GET /api/v1/platform-sync/jobs/{jobId}`
-
-### AI gateway
-- `POST /api/v1/ai/query`
-- `POST /api/v1/ai/code-helper/step`
-- `GET /api/v1/ai/usage`
-
-### Internal (cron/worker)
-- `POST /api/v1/internal/recompute-dashboard`
-- `POST /api/v1/internal/refresh-leaderboard`
+### Internal utilities
 - `GET /api/v1/internal/api-catalog`
 - `POST /api/v1/internal/api-smoke-check`
+- `POST /api/v1/internal/recompute-dashboard`
+- `POST /api/v1/internal/refresh-leaderboard`
 
-> Note: most endpoints currently return structured placeholder responses and are ready to be wired to services/repositories.
-
-### Validation policy note
-- `POST /api/v1/subtopics/{subtopicId}/complete` is threshold-validated and should not allow blind completion writes.
-
-
-## API Skeleton Check (No DB Required)
-Use the skeleton verification endpoint to validate all registered APIs before wiring database/services:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/internal/api-smoke-check
-```
-
-The response includes total/passed/failed and endpoint-level status checks.
-
-
-### Assessment implementation note
-- Assessment endpoints are now backed by an in-memory service (`internal/assessment`) for local development.
-- Use `X-User-ID` header to simulate per-user attempt state during local testing.
-- `POST /api/v1/tests/diagnostic-1/start` accepts `{"topics_known": ["arrays", "strings"]}` and enforces diagnostic one-attempt policy.
-
-- Protected dashboard/learning endpoints return `403` with `DIAGNOSTIC_REQUIRED` until the diagnostic test is submitted for that user.

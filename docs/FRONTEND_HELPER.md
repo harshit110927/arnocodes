@@ -1,6 +1,6 @@
 # Frontend Helper Guide (Pre-DB Workflow Testing)
 
-This guide explains exactly what frontend needs to test the end-to-end flow **before database integration**.
+This guide explains frontend integration expectations during DB infrastructure phase and before full business logic rollout.
 
 ## 1) Base URL + Versioning
 Use backend base URL with API versioning:
@@ -88,3 +88,9 @@ For backend-first API testing commands (curl + JSON payloads), see `docs/API_LOC
 - Dashboard/learning APIs are backend-guarded.
 - Before diagnostic submit, expect `403` with `{ "error": "DIAGNOSTIC_REQUIRED" }`.
 - Frontend should show lock icon/state using `/profiles/me/status` and route users to diagnostic flow.
+
+
+## 10) DB infrastructure phase note
+- Backend now enforces diagnostic lock at API level.
+- Use `/api/v1/profiles/me/status` to drive lock icon and onboarding redirects.
+- Assessment endpoints may return placeholder success while repository logic is being implemented; treat them as contract endpoints only in this phase.

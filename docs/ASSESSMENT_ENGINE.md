@@ -89,15 +89,13 @@ Ship MCQ diagnostic engine first.
 
 
 ## 9) Current backend status
-The backend now includes an in-memory assessment engine for local development (no DB dependency yet):
-- topic-filtered test fetch
-- diagnostic attempt start with one-attempt policy
-- next-question navigation
-- answer submission with order enforcement
-- submit + score computation
-- result fetch, expire, resume endpoints
+Backend has moved to PostgreSQL infrastructure phase:
+- DB connection uses `pgxpool`
+- migrations + seed run at startup
+- assessment repository skeleton exists
+- assessment HTTP endpoints remain stubs until service+repository business logic is added
 
-This lets frontend test complete onboarding assessment flow before DB wiring.
+This keeps architecture clean while preparing production data flow.
 
 ## 10) Backend access control guard
 Protected APIs (dashboard, learning content, leaderboards) must enforce diagnostic completion in backend.

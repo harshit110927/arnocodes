@@ -1,7 +1,8 @@
 # API Roadmap (Based on Product Requirements)
 
 ## Current State
-- Backend now exposes health plus placeholder endpoints for profile, dashboard, learning, assessment, platform sync, AI gateway, and internal recompute jobs.
+- Backend now has PostgreSQL infrastructure wiring (connection, migrations, seed) and repository skeletons.
+- Assessment endpoints are repository-backed stubs in this phase (business logic pending).
 - AI service exposes `GET /health`, `POST /query`, `POST /index` (RAG placeholder implementation).
 
 ## Required v1 API Surface
@@ -85,3 +86,8 @@
 - Dashboard and learning resources are backend-protected until diagnostic test is submitted.
 - If not completed, APIs return `403` with `{ "error": "DIAGNOSTIC_REQUIRED" }`.
 - Frontend should read `GET /api/v1/profiles/me/status` and render lock states accordingly.
+
+
+## Infrastructure-first rollout note
+- Phase complete: DB connection + migration + seed + repository skeletons.
+- Next phase: move assessment workflow logic from stubs into repository/service layer using raw SQL with transactions.

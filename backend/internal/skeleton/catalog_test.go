@@ -5,12 +5,22 @@ import (
 	"testing"
 
 	"github.com/harshit110927/arnocodes/backend/config"
+	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
+	"github.com/harshit110927/arnocodes/backend/internal/learning"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestRunSmokeCheckAllPass(t *testing.T) {
-	h := handlers.NewHandler(&config.Config{Environment: "test"})
+	pool := &pgxpool.Pool{}
+	h := handlers.NewHandler(
+		&config.Config{Environment: "test"},
+		assessment.NewRepository(pool),
+		learning.NewRepository(pool),
+		dashboard.NewRepository(pool),
+	)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
