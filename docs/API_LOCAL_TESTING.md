@@ -50,3 +50,44 @@ Use psql and verify:
 
 
 For local machine + Supabase DB connection setup, see `docs/LOCAL_SUPABASE_SETUP.md`.
+
+## Diagnostic API local test flow (DB-backed)
+
+Set user header:
+
+```bash
+export API=http://localhost:8080
+export USER_ID=00000000-0000-0000-0000-000000000001
+```
+
+1) Start diagnostic:
+```bash
+curl -i -X POST "$API/api/v1/diagnostic/start" \
+  -H "X-User-ID: $USER_ID" -H "Content-Type: application/json" \
+  -d '{"selected_topics":["22222222-2222-2222-2222-222222222221","22222222-2222-2222-2222-222222222222"]}'
+```
+
+2) Get next question:
+```bash
+curl -i -H "X-User-ID: $USER_ID" "$API/api/v1/diagnostic/<attempt_id>/next"
+```
+
+3) Submit MCQ answer:
+```bash
+curl -i -X POST "$API/api/v1/diagnostic/<attempt_id>/answer" \
+  -H "X-User-ID: $USER_ID" -H "Content-Type: application/json" \
+  -d '{"question_id":"<question_id>","question_type":"mcq","selected_option":2}'
+```
+
+4) Submit coding answer:
+```bash
+curl -i -X POST "$API/api/v1/diagnostic/<attempt_id>/coding" \
+  -H "X-User-ID: $USER_ID" -H "Content-Type: application/json" \
+  -d '{"question_id":"<question_id>","question_type":"coding","language":"go","code":"package main\nfunc solve(){}"}'
+```
+
+5) Check status and submit:
+```bash
+curl -i -H "X-User-ID: $USER_ID" "$API/api/v1/diagnostic/<attempt_id>/status"
+curl -i -X POST -H "X-User-ID: $USER_ID" "$API/api/v1/diagnostic/<attempt_id>/submit"
+```

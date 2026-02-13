@@ -93,3 +93,20 @@ Check backend logs for migration/seed failures.
 Then manually query `schema_migrations` in Supabase.
 If empty, connection string likely points to wrong DB/project.
 
+
+## Diagnostic subsystem rollout checklist (important)
+
+If your Supabase schema is not updating, verify this exact order:
+
+1. `DATABASE_URL` points to your Supabase Postgres connection string (not anon URL).
+2. Start backend once to run migrations (`001_init.sql` then `002_diagnostic_tables.sql`).
+3. Check migration ledger:
+   - `SELECT * FROM schema_migrations ORDER BY applied_at DESC;`
+4. Confirm new tables exist:
+   - `diagnostic_attempt_questions`
+   - `coding_submissions`
+   - `diagnostic_topic_results`
+5. Run seed and validate rows in `tests`, `questions`, `topics`.
+6. Call `POST /api/v1/diagnostic/start` with `X-User-ID` and valid topic UUIDs.
+
+If step 3 does not show `002_diagnostic_tables.sql`, the backend did not connect to the expected DB.

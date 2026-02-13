@@ -43,6 +43,10 @@ func main() {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+	go assessment.StartCodingEvaluationWorker(workerCtx, assessment.NewService(assessmentRepo), 10*time.Second, 20)
+
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: mux}
 
@@ -56,6 +60,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
+	workerCancel()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

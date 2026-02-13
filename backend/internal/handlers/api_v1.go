@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 )
 
@@ -23,10 +25,28 @@ type subtopicCompletionRequest struct {
 	MasteryScore float64 `json:"mastery_score"`
 }
 
+type startDiagnosticRequest struct {
+	SelectedTopics []string `json:"selected_topics"`
+}
+
+type answerDiagnosticRequest struct {
+	QuestionID     string `json:"question_id"`
+	QuestionType   string `json:"question_type"`
+	SelectedOption *int   `json:"selected_option,omitempty"`
+	Code           string `json:"code,omitempty"`
+	Language       string `json:"language,omitempty"`
+}
+
 func writeJSON(w http.ResponseWriter, statusCode int, payload APIResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func writeErrorCode(w http.ResponseWriter, statusCode int, errCode string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": errCode})
 }
 
 func methodNotAllowed(w http.ResponseWriter) {
@@ -48,17 +68,26 @@ func pathParts(path string) []string {
 }
 
 func currentUserID(r *http.Request) string {
-	userID := strings.TrimSpace(r.Header.Get("X-User-ID"))
-	if userID == "" {
-		return "00000000-0000-0000-0000-000000000001"
+	return strings.TrimSpace(r.Header.Get("X-User-ID"))
+}
+
+func requireUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	uid := currentUserID(r)
+	if uid == "" {
+		writeErrorCode(w, http.StatusUnauthorized, "UNAUTHORIZED")
+		return "", false
 	}
-	return userID
+	return uid, true
 }
 
 func (h *Handler) ensureDiagnosticCompleted(w http.ResponseWriter, r *http.Request) bool {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return false
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
-	status, err := h.assessmentRepo.GetUserStatus(ctx, currentUserID(r))
+	status, err := h.assessmentRepo.GetUserStatus(ctx, userID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to check diagnostic status"})
 		return false
@@ -66,9 +95,7 @@ func (h *Handler) ensureDiagnosticCompleted(w http.ResponseWriter, r *http.Reque
 	if status.DiagnosticCompleted {
 		return true
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusForbidden)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": "DIAGNOSTIC_REQUIRED"})
+	writeErrorCode(w, http.StatusForbidden, "DIAGNOSTIC_REQUIRED")
 	return false
 }
 
@@ -77,9 +104,13 @@ func (h *Handler) ProfileStatusHandler(w http.ResponseWriter, r *http.Request) {
 		methodNotAllowed(w)
 		return
 	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
-	status, err := h.assessmentRepo.GetUserStatus(ctx, currentUserID(r))
+	status, err := h.assessmentRepo.GetUserStatus(ctx, userID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to read profile status"})
 		return
@@ -269,111 +300,178 @@ func (h *Handler) LearningQuestionsRouter(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
 }
 
-// Assessment endpoints remain repository-backed stubs for now.
-func (h *Handler) TestByIDHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "test details endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) TestStartHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DiagnosticStartHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "start test endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) TestSessionHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
+	userID, ok := requireUserID(w, r)
+	if !ok {
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "active test session endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptAnswerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
+	var req startDiagnosticRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErrorCode(w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY")
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submit answer endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptSubmitHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
+	attemptID, err := h.assessmentService.StartDiagnostic(r.Context(), userID, req.SelectedTopics)
+	if err != nil {
+		h.writeAssessmentError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submit attempt endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptResultHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "attempt result endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptNextQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		methodNotAllowed(w)
-		return
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "next question endpoint placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptExpireHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
-		return
-	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt expired placeholder (db-backed TODO)"})
-}
-func (h *Handler) AttemptResumeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		methodNotAllowed(w)
-		return
-	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "attempt resumed placeholder (db-backed TODO)"})
+	writeJSON(w, http.StatusCreated, APIResponse{Status: "ok", Message: "diagnostic attempt started", Data: map[string]string{"attempt_id": attemptID}})
 }
 
-func (h *Handler) TestsRouter(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DiagnosticRouter(w http.ResponseWriter, r *http.Request) {
 	parts := pathParts(r.URL.Path)
-	if len(parts) == 2 && parts[0] == "tests" {
-		h.TestByIDHandler(w, r)
+	if len(parts) == 2 && parts[0] == "diagnostic" && parts[1] == "start" {
+		h.DiagnosticStartHandler(w, r)
 		return
 	}
-	if len(parts) == 3 && parts[0] == "tests" && parts[2] == "start" {
-		h.TestStartHandler(w, r)
-		return
-	}
-	if len(parts) == 3 && parts[0] == "tests" && parts[2] == "session" {
-		h.TestSessionHandler(w, r)
-		return
-	}
-	writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
-}
-func (h *Handler) TestAttemptsRouter(w http.ResponseWriter, r *http.Request) {
-	parts := pathParts(r.URL.Path)
-	if len(parts) != 3 || parts[0] != "test-attempts" {
+	if len(parts) != 3 || parts[0] != "diagnostic" {
 		writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
 		return
 	}
 	switch parts[2] {
-	case "answers":
-		h.AttemptAnswerHandler(w, r)
+	case "next":
+		h.DiagnosticNextHandler(w, r)
+	case "answer":
+		h.DiagnosticAnswerHandler(w, r)
+	case "coding":
+		h.DiagnosticCodingHandler(w, r)
+	case "status":
+		h.DiagnosticStatusHandler(w, r)
 	case "submit":
-		h.AttemptSubmitHandler(w, r)
-	case "result":
-		h.AttemptResultHandler(w, r)
-	case "next-question":
-		h.AttemptNextQuestionHandler(w, r)
-	case "expire":
-		h.AttemptExpireHandler(w, r)
-	case "resume":
-		h.AttemptResumeHandler(w, r)
+		h.DiagnosticSubmitHandler(w, r)
 	default:
 		writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
 	}
 }
 
+func diagnosticAttemptIDFromPath(path string) string {
+	parts := pathParts(path)
+	if len(parts) >= 2 && parts[0] == "diagnostic" {
+		return parts[1]
+	}
+	return ""
+}
+
+func (h *Handler) DiagnosticNextHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	question, err := h.assessmentService.FetchNextQuestion(r.Context(), userID, diagnosticAttemptIDFromPath(r.URL.Path))
+	if err != nil {
+		h.writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "next diagnostic question", Data: question})
+}
+
+func (h *Handler) DiagnosticAnswerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	var req answerDiagnosticRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErrorCode(w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY")
+		return
+	}
+	submissionID, err := h.assessmentService.SubmitAnswer(r.Context(), userID, diagnosticAttemptIDFromPath(r.URL.Path), assessment.AnswerData{
+		QuestionID:     req.QuestionID,
+		QuestionType:   req.QuestionType,
+		SelectedOption: req.SelectedOption,
+		Code:           req.Code,
+		Language:       req.Language,
+	})
+	if err != nil {
+		h.writeAssessmentError(w, err)
+		return
+	}
+	data := map[string]string{"accepted": "true"}
+	if submissionID != "" {
+		data["submission_id"] = submissionID
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "diagnostic answer accepted", Data: data})
+}
+
+func (h *Handler) DiagnosticCodingHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	h.DiagnosticAnswerHandler(w, r)
+}
+
+func (h *Handler) DiagnosticStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	status, err := h.assessmentRepo.GetDiagnosticAttemptStatus(r.Context(), diagnosticAttemptIDFromPath(r.URL.Path))
+	if err != nil {
+		h.writeAssessmentError(w, err)
+		return
+	}
+	if status.AttemptID == "" {
+		writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+		return
+	}
+	if status.UserID != userID {
+		writeErrorCode(w, http.StatusForbidden, "UNAUTHORIZED")
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "diagnostic status", Data: status})
+}
+
+func (h *Handler) DiagnosticSubmitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.assessmentService.SubmitTest(r.Context(), userID, diagnosticAttemptIDFromPath(r.URL.Path)); err != nil {
+		h.writeAssessmentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "diagnostic submitted"})
+}
+
+func (h *Handler) writeAssessmentError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, assessment.ErrDiagnosticBlocked):
+		writeErrorCode(w, http.StatusForbidden, "DIAGNOSTIC_BLOCKED")
+	case errors.Is(err, assessment.ErrNotFound):
+		writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+	case errors.Is(err, assessment.ErrInvalidInput):
+		writeErrorCode(w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY")
+	case errors.Is(err, assessment.ErrUnauthorized):
+		writeErrorCode(w, http.StatusForbidden, "UNAUTHORIZED")
+	case errors.Is(err, assessment.ErrTimeExpired):
+		writeErrorCode(w, http.StatusForbidden, "TIME_EXPIRED")
+	default:
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: err.Error()})
+	}
+}
+
+// Existing endpoints kept as placeholders for non-diagnostic flows.
 func (h *Handler) PlatformSyncTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)

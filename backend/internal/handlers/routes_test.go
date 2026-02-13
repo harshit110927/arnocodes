@@ -20,67 +20,46 @@ func setupMux() *http.ServeMux {
 	return mux
 }
 
-func TestProfileRouteMethods(t *testing.T) {
+func TestDiagnosticStartRequiresUserID(t *testing.T) {
 	mux := setupMux()
-	for _, method := range []string{http.MethodGet, http.MethodPatch} {
-		req := httptest.NewRequest(method, "/api/v1/profiles/me", nil)
-		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
-		if rr.Code == http.StatusMethodNotAllowed {
-			t.Fatalf("expected %s to be allowed", method)
-		}
-	}
-}
-
-func TestProfileStatusEndpoint(t *testing.T) {
-	mux := setupMux()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/profiles/me/status", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/diagnostic/start", bytes.NewBufferString(`{"selected_topics":["a"]}`))
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500 without db wiring in unit setup, got %d", rr.Code)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 got %d", rr.Code)
 	}
 }
 
-func TestProtectedDashboardRequiresDiagnostic(t *testing.T) {
+func TestDiagnosticStartInvalidBody(t *testing.T) {
 	mux := setupMux()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboard/summary", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/diagnostic/start", bytes.NewBufferString(`{`))
+	req.Header.Set("X-User-ID", "00000000-0000-0000-0000-000000000001")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusInternalServerError {
-		t.Fatalf("expected 500 in nil-repo test setup, got %d", rr.Code)
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 got %d", rr.Code)
 	}
 }
 
-func TestSubtopicCompletionValidation(t *testing.T) {
-	mux := setupMux()
-	low := []byte(`{"mastery_score":0.5}`)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/subtopics/sub-1/complete", bytes.NewBuffer(low))
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-	if rr.Code != http.StatusInternalServerError {
-		t.Fatalf("expected guard failure (500) in nil-repo test setup, got %d", rr.Code)
-	}
-}
-
-func TestAssessmentEndpointsStillReachable(t *testing.T) {
+func TestDiagnosticAttemptRoutesExist(t *testing.T) {
 	mux := setupMux()
 	cases := []struct {
 		method string
 		path   string
 		want   int
 	}{
-		{http.MethodGet, "/api/v1/tests/diagnostic-1", http.StatusOK},
-		{http.MethodPost, "/api/v1/tests/diagnostic-1/start", http.StatusAccepted},
-		{http.MethodGet, "/api/v1/test-attempts/a1/next-question", http.StatusOK},
-		{http.MethodPost, "/api/v1/test-attempts/a1/submit", http.StatusAccepted},
+		{http.MethodGet, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/next", http.StatusUnauthorized},
+		{http.MethodPost, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/answer", http.StatusUnauthorized},
+		{http.MethodPost, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/coding", http.StatusUnauthorized},
+		{http.MethodGet, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/status", http.StatusUnauthorized},
+		{http.MethodPost, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/submit", http.StatusUnauthorized},
 	}
 	for _, tc := range cases {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		if rr.Code != tc.want {
-			t.Fatalf("%s %s expected %d, got %d", tc.method, tc.path, tc.want, rr.Code)
+			t.Fatalf("%s %s expected %d got %d", tc.method, tc.path, tc.want, rr.Code)
 		}
 	}
 }

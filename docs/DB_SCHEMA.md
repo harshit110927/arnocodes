@@ -428,3 +428,89 @@ Recommended indexes:
 - `test_attempts(user_id, test_id)`
 - `questions(test_id, order_index)`
 - `question_attempts(attempt_id, question_id)`
+
+---
+
+## 25. `diagnostic_attempt_questions`
+
+```sql
+diagnostic_attempt_questions (
+  attempt_id UUID REFERENCES test_attempts(id),
+  question_id UUID REFERENCES questions(id),
+  topic_id UUID REFERENCES topics(id),
+  order_index INT,
+  question_type TEXT,
+  allotted_seconds INT,
+  answered_at TIMESTAMP,
+  PRIMARY KEY (attempt_id, question_id)
+)
+```
+
+### Purpose
+
+Stores the frozen, interleaved question sequence for a specific diagnostic attempt.
+
+### Notes
+
+- Prevents question-order drift across refresh/resume.
+- Drives stateful "next question" progression using `order_index`.
+- `answered_at` allows resume from the next unanswered question.
+- Recommended index: `(attempt_id, order_index)`.
+
+---
+
+## 26. `coding_submissions`
+
+```sql
+coding_submissions (
+  id UUID PRIMARY KEY,
+  attempt_id UUID REFERENCES test_attempts(id),
+  question_id UUID REFERENCES questions(id),
+  user_id UUID REFERENCES profiles(id),
+  code TEXT,
+  language TEXT,
+  evaluation_status TEXT,
+  score FLOAT,
+  created_at TIMESTAMP,
+  evaluated_at TIMESTAMP
+)
+```
+
+### Purpose
+
+Stores coding answers submitted during diagnostic tests and their async evaluation status.
+
+### Notes
+
+- `evaluation_status` supports worker-driven lifecycle (`pending`, `completed`, `failed`).
+- Async worker can poll pending rows and persist score updates.
+- Enables delayed grading without blocking request-response APIs.
+- Recommended index: `(evaluation_status)`.
+
+---
+
+## 27. `diagnostic_topic_results`
+
+```sql
+diagnostic_topic_results (
+  attempt_id UUID REFERENCES test_attempts(id),
+  topic_id UUID REFERENCES topics(id),
+  score INT,
+  max_score INT,
+  percentage FLOAT,
+  passed BOOLEAN,
+  created_at TIMESTAMP,
+  PRIMARY KEY (attempt_id, topic_id)
+)
+```
+
+### Purpose
+
+Stores per-topic aggregated results for a diagnostic attempt.
+
+### Notes
+
+- Powers unlocking and mastery initialization at topic level.
+- Used to update `user_topic_progress` with highest-score retention.
+- Keeps attempt scoring auditable and immutable after submission.
+- Recommended index: `(attempt_id, topic_id)`.

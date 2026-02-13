@@ -52,7 +52,8 @@ func RunSeed(ctx context.Context, db *DB) error {
 		('55555555-5555-5555-5555-555555555552','11111111-1111-1111-1111-111111111111','slide','Strings: common matching patterns and complexity.',NULL,NULL,0,2),
 		('55555555-5555-5555-5555-555555555553','11111111-1111-1111-1111-111111111111','slide','Trees: recursion + traversal fundamentals.',NULL,NULL,0,3),
 		('55555555-5555-5555-5555-555555555554','11111111-1111-1111-1111-111111111111','mcq','Best complexity for array index lookup?', '["O(n)","O(1)","O(log n)","O(n log n)"]'::jsonb,2,2,10),
-		('55555555-5555-5555-5555-555555555555','11111111-1111-1111-1111-111111111111','mcq','Queue-based traversal of a tree is?', '["Inorder","Preorder","Level-order","Postorder"]'::jsonb,3,2,11)
+		('55555555-5555-5555-5555-555555555555','11111111-1111-1111-1111-111111111111','mcq','Queue-based traversal of a tree is?', '["Inorder","Preorder","Level-order","Postorder"]'::jsonb,3,2,11),
+		('55555555-5555-5555-5555-555555555556','11111111-1111-1111-1111-111111111111','coding','Write a function to reverse an array.', NULL,NULL,6,12)
 		ON CONFLICT (id) DO NOTHING`); err != nil {
 		return fmt.Errorf("seed questions: %w", err)
 	}

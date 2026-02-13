@@ -91,3 +91,21 @@
 ## Infrastructure-first rollout note
 - Phase complete: DB connection + migration + seed + repository skeletons.
 - Next phase: move assessment workflow logic from stubs into repository/service layer using raw SQL with transactions.
+
+## Diagnostic APIs (DB-backed)
+
+- `POST /api/v1/diagnostic/start`
+  - Starts diagnostic attempt (validates prerequisite-respecting topic selection and retake limit).
+  - `403 {"error":"DIAGNOSTIC_BLOCKED"}` if >2 attempts in 48h.
+- `GET /api/v1/diagnostic/{attemptID}/next`
+  - Returns next safe question payload (never includes correct answer).
+- `POST /api/v1/diagnostic/{attemptID}/answer`
+  - Submits MCQ or coding answer payload.
+- `POST /api/v1/diagnostic/{attemptID}/coding`
+  - Alias for coding answer submit (same schema as `/answer`).
+- `GET /api/v1/diagnostic/{attemptID}/status`
+  - Returns attempt status, progress, total allowed seconds.
+- `POST /api/v1/diagnostic/{attemptID}/submit`
+  - Finalizes attempt, computes topic-wise results and updates topic progress using highest-score rule.
+
+All endpoints require `X-User-ID` and enforce attempt ownership.

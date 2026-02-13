@@ -11,19 +11,21 @@ import (
 )
 
 type Handler struct {
-	config         *config.Config
-	router         http.Handler
-	assessmentRepo *assessment.Repository
-	learningRepo   *learning.Repository
-	dashboardRepo  *dashboard.Repository
+	config            *config.Config
+	router            http.Handler
+	assessmentRepo    *assessment.Repository
+	assessmentService *assessment.Service
+	learningRepo      *learning.Repository
+	dashboardRepo     *dashboard.Repository
 }
 
 func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, learningRepo *learning.Repository, dashboardRepo *dashboard.Repository) *Handler {
 	return &Handler{
-		config:         cfg,
-		assessmentRepo: assessmentRepo,
-		learningRepo:   learningRepo,
-		dashboardRepo:  dashboardRepo,
+		config:            cfg,
+		assessmentRepo:    assessmentRepo,
+		assessmentService: assessment.NewService(assessmentRepo),
+		learningRepo:      learningRepo,
+		dashboardRepo:     dashboardRepo,
 	}
 }
 

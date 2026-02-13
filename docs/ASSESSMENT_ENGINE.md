@@ -106,3 +106,18 @@ If diagnostic is incomplete, return:
 with `403 Forbidden`.
 
 Frontend lock icon is UX only; backend check is the actual authorization control.
+
+## Implemented DB-backed Diagnostic Engine
+
+- Source-of-truth is PostgreSQL (`test_attempts`, `question_attempts`, `diagnostic_attempt_questions`, `coding_submissions`, `diagnostic_topic_results`).
+- Retake rule enforced server-side: maximum 2 attempts in the last 48 hours.
+- Resume behavior: next question is computed from `answered_at` and `order_index`.
+- Global expiry enforced from `test_attempts.expires_at`; expired attempts are marked `expired`.
+- Coding evaluation is async through worker polling of `coding_submissions` where `evaluation_status='pending'`.
+- Submission finalization computes per-topic score and updates `user_topic_progress` by keeping highest mastery.
+
+### Timer policy
+
+- MCQ question slot: 30 seconds.
+- Coding question slot: 30 minutes.
+- Attempt-level limit is persisted in `test_attempts.expires_at`; APIs reject actions once expired.
