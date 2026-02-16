@@ -131,6 +131,20 @@ Each service has its own README with detailed setup instructions:
 - [Frontend README](./frontend/README.md)
 - [AI Service README](./ai/README.md)
 
+## Product Documentation
+
+- [Product Overview](./docs/PRODUCT.md)
+- [Database Schema](./docs/DB_SCHEMA.md)
+- [Development Cycle](./docs/DEVELOPMENT_CYCLE.md)
+- [Product Alignment Review](./docs/PRODUCT_ALIGNMENT.md)
+- [API Roadmap](./docs/API_ROADMAP.md)
+- [Frontend Helper Guide](./docs/FRONTEND_HELPER.md)
+- [Assessment Engine Guide](./docs/ASSESSMENT_ENGINE.md)
+- [API Local Testing Playbook](./docs/API_LOCAL_TESTING.md)
+- [Codebase Guide](./docs/CODEBASE_GUIDE.md)
+- [Local Supabase Setup Guide](./docs/LOCAL_SUPABASE_SETUP.md)
+- [Local Script Testing Guide (test.js)](./docs/LOCAL_TESTING_WITH_TEST_JS.md)
+
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
