@@ -52,16 +52,13 @@ Dashboard and learning APIs are backend guarded. If diagnostic is incomplete the
 ```
 with HTTP `403`.
 
-### Assessment (repository-backed stubs for business logic phase)
-- `GET /api/v1/tests/{testId}`
-- `POST /api/v1/tests/{testId}/start`
-- `GET /api/v1/tests/{testId}/session`
-- `POST /api/v1/test-attempts/{attemptId}/answers`
-- `POST /api/v1/test-attempts/{attemptId}/submit`
-- `GET /api/v1/test-attempts/{attemptId}/result`
-- `GET /api/v1/test-attempts/{attemptId}/next-question`
-- `POST /api/v1/test-attempts/{attemptId}/expire`
-- `POST /api/v1/test-attempts/{attemptId}/resume`
+### Assessment (diagnostic APIs)
+- `POST /api/v1/diagnostic/start`
+- `GET /api/v1/diagnostic/{attemptId}/next`
+- `POST /api/v1/diagnostic/{attemptId}/answer`
+- `POST /api/v1/diagnostic/{attemptId}/coding`
+- `GET /api/v1/diagnostic/{attemptId}/status`
+- `POST /api/v1/diagnostic/{attemptId}/submit`
 
 ### Internal utilities
 - `GET /api/v1/internal/api-catalog`
@@ -73,3 +70,12 @@ with HTTP `403`.
 
 ## Supabase Local Testing
 For full local clone + Supabase setup and troubleshooting, see `../docs/LOCAL_SUPABASE_SETUP.md`.
+
+
+## Local diagnostic smoke test script
+After backend is running, execute:
+```bash
+cd backend
+node test.js
+```
+Full walkthrough: `../docs/LOCAL_TESTING_WITH_TEST_JS.md`.
