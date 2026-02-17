@@ -69,7 +69,7 @@ func (s *Service) FetchNextQuestion(ctx context.Context, userID, attemptID strin
 		_ = s.repo.MarkAttemptExpired(ctx, attemptID)
 		return DiagnosticQuestion{}, ErrTimeExpired
 	}
-	return s.repo.GetNextDiagnosticQuestion(ctx, attemptID, status.LastAnsweredOrderIdx)
+	return s.repo.GetNextDiagnosticQuestion(ctx, attemptID)
 }
 
 func (s *Service) SubmitAnswer(ctx context.Context, userID, attemptID string, data AnswerData) (string, error) {
