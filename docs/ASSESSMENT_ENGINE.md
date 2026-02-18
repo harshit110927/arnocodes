@@ -121,3 +121,15 @@ Frontend lock icon is UX only; backend check is the actual authorization control
 - MCQ question slot: 30 seconds.
 - Coding question slot: 30 minutes.
 - Attempt-level limit is persisted in `test_attempts.expires_at`; APIs reject actions once expired.
+
+## Diagnostic Hardening Pass (Concurrency + Idempotency)
+
+The backend now enforces stricter production safety in repository SQL:
+
+- Attempt validation (`status='in_progress'` and `NOW() <= expires_at`) is enforced before next-question and all mutation paths.
+- `CompleteDiagnosticAttempt` is idempotent and guarded with `UPDATE ... WHERE status='in_progress'`.
+- Coding worker claim step uses transactional `FOR UPDATE SKIP LOCKED` and marks rows `processing` before returning them.
+- Topic scoring counts only the latest coding submission per question (lateral latest row).
+- State updates check `RowsAffected()` to prevent silent no-op races.
+
+These changes harden multi-request and multi-worker concurrency without changing public API contracts.
