@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -140,6 +141,20 @@ func (r *Repository) CreateDiagnosticAttempt(ctx context.Context, userID string,
 		VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 0, 'in_progress', NOW(), NOW() + INTERVAL '2 hours', NULL, 'v1')
 		RETURNING id::text
 	`, userID, diagnosticTestID).Scan(&attemptID); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			if err := tx.QueryRow(ctx, `
+				SELECT id::text
+				FROM test_attempts
+				WHERE user_id = $1::uuid
+				  AND test_id = $2::uuid
+				  AND status IN ('started','in_progress')
+				LIMIT 1
+			`, userID, diagnosticTestID).Scan(&attemptID); err != nil {
+				return "", fmt.Errorf("load existing active attempt: %w", err)
+			}
+			return attemptID, nil
+		}
 		return "", fmt.Errorf("create test attempt: %w", err)
 	}
 
@@ -243,7 +258,6 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 	`
 	var out DiagnosticQuestion
 	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
-	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DiagnosticQuestion{}, ErrNotFound
 		}
@@ -338,7 +352,6 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("commit tx: %w", err)
 	}
-
 	return submissionID, nil
 }
 
@@ -410,7 +423,6 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	for dataRows.Next() {
 		var c CodingSubmission
 		if err := dataRows.Scan(&c.ID, &c.AttemptID, &c.QuestionID, &c.UserID, &c.Code, &c.Language, &c.EvaluationStatus, &c.Score); err != nil {
-
 			return nil, err
 		}
 		out = append(out, c)
@@ -419,7 +431,6 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
-
 	return out, nil
 }
 
@@ -544,7 +555,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("upsert user_topic_progress: %w", err)
 	}
 
-	res, err := tx.Exec(ctx, `
 	res, err := tx.Exec(ctx, `
 		UPDATE test_attempts
 		SET status='submitted',
