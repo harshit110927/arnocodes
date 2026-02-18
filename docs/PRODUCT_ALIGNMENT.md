@@ -81,3 +81,15 @@ This document maps required product actions to the **current repository implemen
 ## Access Control Enforcement
 - Protected resources now require diagnostic completion and return `403 DIAGNOSTIC_REQUIRED` when blocked.
 - Frontend should consume `/api/v1/profiles/me/status` for lock rendering, but authorization remains backend-enforced.
+
+## Frontend Build Alignment (Design + API)
+
+To keep frontend implementation production-ready and consistent with backend:
+
+- Use only `/api/v1/*` endpoints listed in `docs/API_ROADMAP.md`.
+- Use backend status as truth for lock states via `GET /api/v1/profiles/me/status`.
+- Implement the tokenized theme system from `docs/FRONTEND_HELPER.md` (light/dark tokens, typography, spacing, radius, component rules).
+- Avoid local component-level color overrides and hardcoded hex values.
+- Ensure protected screen rendering always handles `403 DIAGNOSTIC_REQUIRED` gracefully.
+
+This ensures API contract correctness, visual consistency, and secure UX flow.

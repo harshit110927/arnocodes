@@ -105,7 +105,6 @@ async function main() {
 
   logStep('3) Start diagnostic');
   const start = await call('POST', '/api/v1/diagnostic/start', { selected_topics: TOPIC_IDS });
-  console.log('Start response:', start);
 
   if (start.status === 403 && start.json?.error === 'DIAGNOSTIC_BLOCKED') {
     console.log('⚠️ DIAGNOSTIC_BLOCKED: This user has already reached retake limit (2 attempts in 48 hours).');

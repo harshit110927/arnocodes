@@ -187,7 +187,7 @@ func (r *Repository) CreateDiagnosticAttempt(ctx context.Context, userID string,
 	return attemptID, nil
 }
 
-func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID string) (DiagnosticQuestion, error) {
+func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID string, lastOrderIndex int) (DiagnosticQuestion, error) {
 	if r.pool == nil {
 		return DiagnosticQuestion{}, fmt.Errorf("assessment repository is not initialized")
 	}
@@ -196,13 +196,13 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 	FROM diagnostic_attempt_questions daq
 	JOIN questions qs ON qs.id = daq.question_id
 	WHERE daq.attempt_id = $1::uuid
-	  
+	  AND daq.order_index > $2
 	  AND daq.answered_at IS NULL
 	ORDER BY daq.order_index ASC
 	LIMIT 1
 	`
 	var out DiagnosticQuestion
-	if err := r.pool.QueryRow(ctx, q, attemptID).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
+	if err := r.pool.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DiagnosticQuestion{}, ErrNotFound
 		}
@@ -221,23 +221,6 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var exists bool
-	err = tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM diagnostic_attempt_questions
-			WHERE attempt_id = $1::uuid
-			  AND question_id = $2::uuid
-		)
-	`, attemptID, questionID).Scan(&exists)
-
-	if err != nil {
-		return fmt.Errorf("validate attempt question mapping: %w", err)
-	}
-	if !exists {
-		return fmt.Errorf("question does not belong to this attempt")
-	}
-
 	var correctOption int
 	if err := tx.QueryRow(ctx, `SELECT correct_option FROM questions WHERE id=$1::uuid`, questionID).Scan(&correctOption); err != nil {
 		return fmt.Errorf("load correct option: %w", err)
@@ -251,29 +234,10 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 	`, attemptID, questionID, selectedOption, isCorrect); err != nil {
 		return fmt.Errorf("upsert question attempt: %w", err)
 	}
-	cmdTag, err := tx.Exec(ctx, `
-		UPDATE diagnostic_attempt_questions
-		SET answered_at = NOW()
-		WHERE attempt_id = $1::uuid
-		  AND question_id = $2::uuid
-		  AND answered_at IS NULL
-	`, attemptID, questionID)
-
-	if err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE diagnostic_attempt_questions SET answered_at=NOW() WHERE attempt_id=$1::uuid AND question_id=$2::uuid`, attemptID, questionID); err != nil {
 		return fmt.Errorf("mark answered: %w", err)
 	}
-
-	if cmdTag.RowsAffected() != 1 {
-		return fmt.Errorf("no rows updated in diagnostic_attempt_questions (attempt_id=%s question_id=%s)", attemptID, questionID)
-	}
-
-	// 5️⃣ Commit transaction
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-	fmt.Println("MCQ UPDATE CALLED:", attemptID, questionID)
-
-	return nil
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questionID, userID, code, language string) (string, error) {
