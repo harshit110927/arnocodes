@@ -569,7 +569,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	if res.RowsAffected() == 0 {
 		return tx.Commit(ctx)
 	}
-
 	return tx.Commit(ctx)
 }
 
