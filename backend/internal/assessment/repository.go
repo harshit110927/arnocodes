@@ -243,6 +243,7 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 	`
 	var out DiagnosticQuestion
 	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
+	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DiagnosticQuestion{}, ErrNotFound
 		}
@@ -337,6 +338,7 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("commit tx: %w", err)
 	}
+
 	return submissionID, nil
 }
 
@@ -408,6 +410,7 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	for dataRows.Next() {
 		var c CodingSubmission
 		if err := dataRows.Scan(&c.ID, &c.AttemptID, &c.QuestionID, &c.UserID, &c.Code, &c.Language, &c.EvaluationStatus, &c.Score); err != nil {
+
 			return nil, err
 		}
 		out = append(out, c)
@@ -416,6 +419,7 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
+
 	return out, nil
 }
 
@@ -541,6 +545,7 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	}
 
 	res, err := tx.Exec(ctx, `
+	res, err := tx.Exec(ctx, `
 		UPDATE test_attempts
 		SET status='submitted',
 		    submitted_at=NOW(),
@@ -554,7 +559,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	if res.RowsAffected() == 0 {
 		return tx.Commit(ctx)
 	}
-
 	return tx.Commit(ctx)
 }
 
