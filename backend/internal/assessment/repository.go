@@ -187,7 +187,6 @@ func (r *Repository) CreateDiagnosticAttempt(ctx context.Context, userID string,
 	return attemptID, nil
 }
 
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 func validateAttemptLocked(ctx context.Context, tx pgx.Tx, attemptID string) error {
 	var status string
 	var expiresAt time.Time
@@ -201,18 +200,27 @@ func validateAttemptLocked(ctx context.Context, tx pgx.Tx, attemptID string) err
 		return fmt.Errorf("attempt is not in progress")
 	}
 	if time.Now().After(expiresAt) {
+		res, err := tx.Exec(ctx, `
+			UPDATE test_attempts
+			SET status='expired'
+			WHERE id=$1::uuid
+			  AND status='in_progress'
+		`, attemptID)
+		if err != nil {
+			return fmt.Errorf("mark attempt expired: %w", err)
+		}
+		if res.RowsAffected() == 0 {
+			return fmt.Errorf("attempt expired")
+		}
 		return fmt.Errorf("attempt expired")
 	}
 	return nil
 }
 
-=======
->>>>>>> main
 func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID string, lastOrderIndex int) (DiagnosticQuestion, error) {
 	if r.pool == nil {
 		return DiagnosticQuestion{}, fmt.Errorf("assessment repository is not initialized")
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return DiagnosticQuestion{}, fmt.Errorf("begin tx: %w", err)
@@ -223,8 +231,6 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 		return DiagnosticQuestion{}, err
 	}
 
-=======
->>>>>>> main
 	const q = `
 	SELECT daq.question_id::text, daq.question_type, qs.content, qs.options, daq.order_index, daq.topic_id::text, daq.allotted_seconds
 	FROM diagnostic_attempt_questions daq
@@ -236,23 +242,17 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 	LIMIT 1
 	`
 	var out DiagnosticQuestion
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
-=======
-	if err := r.pool.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
->>>>>>> main
+	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DiagnosticQuestion{}, ErrNotFound
 		}
 		return DiagnosticQuestion{}, fmt.Errorf("next question: %w", err)
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 
 	if err := tx.Commit(ctx); err != nil {
 		return DiagnosticQuestion{}, fmt.Errorf("commit tx: %w", err)
 	}
-=======
->>>>>>> main
 	return out, nil
 }
 
@@ -266,13 +266,10 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	if err := validateAttemptLocked(ctx, tx, attemptID); err != nil {
 		return err
 	}
 
-=======
->>>>>>> main
 	var correctOption int
 	if err := tx.QueryRow(ctx, `SELECT correct_option FROM questions WHERE id=$1::uuid`, questionID).Scan(&correctOption); err != nil {
 		return fmt.Errorf("load correct option: %w", err)
@@ -286,7 +283,6 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 	`, attemptID, questionID, selectedOption, isCorrect); err != nil {
 		return fmt.Errorf("upsert question attempt: %w", err)
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 
 	res, err := tx.Exec(ctx, `
 		UPDATE diagnostic_attempt_questions
@@ -300,11 +296,6 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 		return fmt.Errorf("question already answered or not part of attempt")
 	}
 
-=======
-	if _, err := tx.Exec(ctx, `UPDATE diagnostic_attempt_questions SET answered_at=NOW() WHERE attempt_id=$1::uuid AND question_id=$2::uuid`, attemptID, questionID); err != nil {
-		return fmt.Errorf("mark answered: %w", err)
-	}
->>>>>>> main
 	return tx.Commit(ctx)
 }
 
@@ -312,7 +303,6 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 	if r.pool == nil {
 		return "", fmt.Errorf("assessment repository is not initialized")
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
@@ -325,10 +315,6 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 
 	var submissionID string
 	err = tx.QueryRow(ctx, `
-=======
-	var submissionID string
-	err := r.pool.QueryRow(ctx, `
->>>>>>> main
 		INSERT INTO coding_submissions (id, attempt_id, question_id, user_id, code, language, evaluation_status, score, created_at, evaluated_at)
 		VALUES (gen_random_uuid(),$1::uuid,$2::uuid,$3::uuid,$4,$5,'pending',NULL,NOW(),NULL)
 		RETURNING id::text
@@ -336,7 +322,6 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 	if err != nil {
 		return "", fmt.Errorf("insert coding submission: %w", err)
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 
 	res, err := tx.Exec(ctx, `
 		UPDATE diagnostic_attempt_questions
@@ -353,9 +338,7 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("commit tx: %w", err)
 	}
-=======
-	_, _ = r.pool.Exec(ctx, `UPDATE diagnostic_attempt_questions SET answered_at=NOW() WHERE attempt_id=$1::uuid AND question_id=$2::uuid`, attemptID, questionID)
->>>>>>> main
+
 	return submissionID, nil
 }
 
@@ -363,7 +346,6 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	if r.pool == nil {
 		return nil, fmt.Errorf("assessment repository is not initialized")
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
@@ -400,12 +382,17 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 		return []CodingSubmission{}, nil
 	}
 
-	if _, err := tx.Exec(ctx, `
+	res, err := tx.Exec(ctx, `
 		UPDATE coding_submissions
 		SET evaluation_status='processing'
 		WHERE id = ANY($1::uuid[])
-	`, ids); err != nil {
+		  AND evaluation_status='pending'
+	`, ids)
+	if err != nil {
 		return nil, fmt.Errorf("mark submissions processing: %w", err)
+	}
+	if res.RowsAffected() != int64(len(ids)) {
+		return nil, fmt.Errorf("failed to claim all pending submissions")
 	}
 
 	dataRows, err := tx.Query(ctx, `
@@ -423,34 +410,16 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	for dataRows.Next() {
 		var c CodingSubmission
 		if err := dataRows.Scan(&c.ID, &c.AttemptID, &c.QuestionID, &c.UserID, &c.Code, &c.Language, &c.EvaluationStatus, &c.Score); err != nil {
-=======
-	rows, err := r.pool.Query(ctx, `
-		SELECT id::text, attempt_id::text, question_id::text, user_id::text, code, language, evaluation_status, score
-		FROM coding_submissions
-		WHERE evaluation_status='pending'
-		ORDER BY created_at ASC
-		LIMIT $1
-	`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := []CodingSubmission{}
-	for rows.Next() {
-		var c CodingSubmission
-		if err := rows.Scan(&c.ID, &c.AttemptID, &c.QuestionID, &c.UserID, &c.Code, &c.Language, &c.EvaluationStatus, &c.Score); err != nil {
->>>>>>> main
+
 			return nil, err
 		}
 		out = append(out, c)
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
-=======
->>>>>>> main
+
 	return out, nil
 }
 
@@ -458,7 +427,6 @@ func (r *Repository) UpdateCodingSubmissionResult(ctx context.Context, submissio
 	if r.pool == nil {
 		return fmt.Errorf("assessment repository is not initialized")
 	}
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	res, err := r.pool.Exec(ctx, `
 		UPDATE coding_submissions
 		SET evaluation_status=$2, score=$3, evaluated_at=NOW()
@@ -471,10 +439,6 @@ func (r *Repository) UpdateCodingSubmissionResult(ctx context.Context, submissio
 		return fmt.Errorf("no processing submission updated")
 	}
 	return nil
-=======
-	_, err := r.pool.Exec(ctx, `UPDATE coding_submissions SET evaluation_status=$2, score=$3, evaluated_at=NOW() WHERE id=$1::uuid`, submissionID, status, score)
-	return err
->>>>>>> main
 }
 
 func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID string) error {
@@ -488,7 +452,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var userID string
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	var status string
 	var expiresAt time.Time
 	if err := tx.QueryRow(ctx, `SELECT user_id::text, status::text, expires_at FROM test_attempts WHERE id=$1::uuid FOR UPDATE`, attemptID).Scan(&userID, &status, &expiresAt); err != nil {
@@ -504,13 +467,20 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("attempt is not in progress")
 	}
 	if time.Now().After(expiresAt) {
+		res, updErr := tx.Exec(ctx, `
+			UPDATE test_attempts
+			SET status='expired'
+			WHERE id=$1::uuid
+			  AND status='in_progress'
+		`, attemptID)
+		if updErr != nil {
+			return fmt.Errorf("mark attempt expired: %w", updErr)
+		}
+		if res.RowsAffected() == 0 {
+			return fmt.Errorf("attempt expired")
+		}
 		return fmt.Errorf("attempt expired")
 	}
-=======
-	if err := tx.QueryRow(ctx, `SELECT user_id::text FROM test_attempts WHERE id=$1::uuid FOR UPDATE`, attemptID).Scan(&userID); err != nil {
-		return fmt.Errorf("lock attempt: %w", err)
-	}
->>>>>>> main
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO diagnostic_topic_results (attempt_id, topic_id, score, max_score, percentage, passed, created_at)
@@ -523,22 +493,14 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		          COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
 		          + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
 		         )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0 AS percentage,
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 		       (((
 		          COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
 		          + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
 		         )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0) >= 80.0 AS passed,
-=======
-		       ((((
-		          COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
-		          + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
-		         )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0) >= 80.0) AS passed,
->>>>>>> main
 		       NOW()
 		FROM diagnostic_attempt_questions daq
 		JOIN questions q ON q.id = daq.question_id
 		LEFT JOIN question_attempts qa ON qa.attempt_id = daq.attempt_id AND qa.question_id = daq.question_id
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 		LEFT JOIN LATERAL (
 			SELECT score, evaluation_status
 			FROM coding_submissions
@@ -547,9 +509,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 			ORDER BY created_at DESC
 			LIMIT 1
 		) cs ON TRUE
-=======
-		LEFT JOIN coding_submissions cs ON cs.attempt_id = daq.attempt_id AND cs.question_id = daq.question_id
->>>>>>> main
 		WHERE daq.attempt_id = $1::uuid
 		GROUP BY daq.attempt_id, daq.topic_id
 		ON CONFLICT (attempt_id, topic_id) DO UPDATE SET
@@ -585,17 +544,13 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("upsert user_topic_progress: %w", err)
 	}
 
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 	res, err := tx.Exec(ctx, `
-=======
-	if _, err := tx.Exec(ctx, `
->>>>>>> main
+	res, err := tx.Exec(ctx, `
 		UPDATE test_attempts
 		SET status='submitted',
 		    submitted_at=NOW(),
 		    score=(SELECT COALESCE(SUM(score),0) FROM diagnostic_topic_results WHERE attempt_id=$1::uuid)
 		WHERE id=$1::uuid
-<<<<<<< codex/add-leaderboard-database-schema-ltbvau
 		  AND status='in_progress'
 	`, attemptID)
 	if err != nil {
@@ -604,12 +559,6 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	if res.RowsAffected() == 0 {
 		return tx.Commit(ctx)
 	}
-=======
-	`, attemptID); err != nil {
-		return fmt.Errorf("finalize attempt: %w", err)
-	}
->>>>>>> main
-
 	return tx.Commit(ctx)
 }
 
