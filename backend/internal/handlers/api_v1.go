@@ -161,7 +161,16 @@ func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "dashboard summary endpoint placeholder"})
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	data, err := h.dashboardRepo.GetDashboard(r.Context(), userID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch dashboard"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "dashboard summary", Data: data})
 }
 func (h *Handler) DashboardHeatmapHandler(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureDiagnosticCompleted(w, r) {
@@ -477,7 +486,15 @@ func (h *Handler) PlatformSyncTriggerHandler(w http.ResponseWriter, r *http.Requ
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform sync trigger endpoint placeholder"})
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.dashboardRepo.TriggerPlatformSync(r.Context(), userID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to trigger platform sync"})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform sync trigger accepted"})
 }
 func (h *Handler) PlatformSyncJobHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

@@ -158,9 +158,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 - `GET /api/v1/profiles/me/status`
 
 ### Dashboard (protected)
-- `GET /api/v1/dashboard/summary`
-- `GET /api/v1/dashboard/heatmap`
-- `GET /api/v1/dashboard/leaderboards`
+- `GET /api/v1/dashboard` (primary read model: summary + heatmap + activity + mastery + weak topics + events)
+- `GET /api/v1/dashboard/summary` (compat alias)
 
 ### Learning (protected)
 - `GET /api/v1/course/structure`
@@ -184,9 +183,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 - `POST /api/v1/ai/code-helper/step`
 - `GET /api/v1/ai/usage`
 - `GET /api/v1/profiles/me/platform-connections`
-- `POST /api/v1/platform-sync/trigger`
+- `POST /api/v1/platform-sync/trigger` (no client payload; server queues profile sync job)
 
 ---
+
+
+### Dashboard payload notes
+- `heatmap[].has_diagnostic` flags days that include diagnostic activity.
+- `topic_mastery` already filtered to unlocked/in-progress/completed topics; avoid client-side unlock inference.
+- Treat `mastery_score` as authoritative (already persisted backend-side).
 
 ## 8) Frontend Folder Structure Suggestion
 

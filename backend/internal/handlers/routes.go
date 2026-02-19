@@ -12,6 +12,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(apiV1BasePath+"/profiles/me/platform-connections", h.PlatformConnectionsHandler)
 	mux.HandleFunc(apiV1BasePath+"/profiles/me/platform-connections/", h.PlatformConnectionByNameHandler)
 
+	mux.HandleFunc(apiV1BasePath+"/dashboard", h.DashboardSummaryHandler)
 	mux.HandleFunc(apiV1BasePath+"/dashboard/summary", h.DashboardSummaryHandler)
 	mux.HandleFunc(apiV1BasePath+"/dashboard/heatmap", h.DashboardHeatmapHandler)
 	mux.HandleFunc(apiV1BasePath+"/dashboard/leaderboards", h.DashboardLeaderboardsHandler)

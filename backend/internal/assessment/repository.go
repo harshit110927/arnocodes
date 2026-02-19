@@ -532,27 +532,144 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, completed_at)
+		INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, diagnostic_mastery, completed_at)
 		SELECT $1::uuid,
 		       dtr.topic_id,
 		       CASE WHEN dtr.percentage >= 80 THEN 'completed'::learning_progress_status ELSE 'in_progress'::learning_progress_status END,
+		       dtr.percentage,
 		       dtr.percentage,
 		       CASE WHEN dtr.percentage >= 80 THEN NOW() ELSE NULL END
 		FROM diagnostic_topic_results dtr
 		WHERE dtr.attempt_id = $2::uuid
 		ON CONFLICT (user_id, topic_id)
 		DO UPDATE SET
-		  mastery_score = GREATEST(user_topic_progress.mastery_score, EXCLUDED.mastery_score),
+		  diagnostic_mastery = EXCLUDED.diagnostic_mastery,
+		  mastery_score = GREATEST(EXCLUDED.diagnostic_mastery,
+		    CASE
+		      WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+		      THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+		      ELSE 0
+		    END
+		  ),
 		  status = CASE
-		    WHEN GREATEST(user_topic_progress.mastery_score, EXCLUDED.mastery_score) >= 80 THEN 'completed'::learning_progress_status
+		    WHEN GREATEST(EXCLUDED.diagnostic_mastery,
+		      CASE
+		        WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+		        THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+		        ELSE 0
+		      END
+		    ) >= 80 THEN 'completed'::learning_progress_status
 		    ELSE user_topic_progress.status
 		  END,
 		  completed_at = CASE
-		    WHEN GREATEST(user_topic_progress.mastery_score, EXCLUDED.mastery_score) >= 80 THEN NOW()
+		    WHEN GREATEST(EXCLUDED.diagnostic_mastery,
+		      CASE
+		        WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+		        THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+		        ELSE 0
+		      END
+		    ) >= 80 THEN NOW()
 		    ELSE user_topic_progress.completed_at
 		  END
 	`, userID, attemptID); err != nil {
 		return fmt.Errorf("upsert user_topic_progress: %w", err)
+	}
+
+	tRows, err := tx.Query(ctx, `SELECT topic_id::text, percentage FROM diagnostic_topic_results WHERE attempt_id=$1::uuid`, attemptID)
+	if err != nil {
+		return fmt.Errorf("load diagnostic topic results: %w", err)
+	}
+	for tRows.Next() {
+		var topicID string
+		var pct float64
+		if err := tRows.Scan(&topicID, &pct); err != nil {
+			tRows.Close()
+			return err
+		}
+		if pct >= 80 {
+			if err := r.ensureUnlocksForUserTx(ctx, tx, userID, topicID); err != nil {
+				tRows.Close()
+				return err
+			}
+		}
+	}
+	tRows.Close()
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_activity_feed (id, user_id, source, title, topic_id, solved_at)
+		VALUES (gen_random_uuid(), $1::uuid, 'diagnostic', 'Diagnostic attempt completed', NULL, NOW())
+	`, userID); err != nil {
+		return fmt.Errorf("insert diagnostic activity feed: %w", err)
+	}
+
+	nowUTC := time.Now().UTC()
+	today := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
+	var todayStreak int
+	err = tx.QueryRow(ctx, `
+		SELECT streak_count
+		FROM dashboard_daily_snapshots
+		WHERE user_id=$1::uuid AND snapshot_date=$2::date
+		FOR UPDATE
+	`, userID, today).Scan(&todayStreak)
+	if err != nil && err != pgx.ErrNoRows {
+		return fmt.Errorf("load today snapshot streak: %w", err)
+	}
+	if err == pgx.ErrNoRows {
+		newStreak := 1
+		yesterday := today.Add(-24 * time.Hour)
+		var yesterdayStreak, yesterdayQuestions int
+		hadYesterdaySnapshot := false
+		err = tx.QueryRow(ctx, `
+			SELECT streak_count, questions_solved
+			FROM dashboard_daily_snapshots
+			WHERE user_id=$1::uuid AND snapshot_date=$2::date
+		`, userID, yesterday).Scan(&yesterdayStreak, &yesterdayQuestions)
+		if err != nil && err != pgx.ErrNoRows {
+			return fmt.Errorf("load yesterday snapshot streak: %w", err)
+		}
+		if err == nil {
+			hadYesterdaySnapshot = true
+		}
+
+		yesterdayHadDiagnostic := false
+		if err := tx.QueryRow(ctx, `
+			SELECT EXISTS(
+				SELECT 1
+				FROM user_activity_feed
+				WHERE user_id=$1::uuid
+				  AND source='diagnostic'
+				  AND solved_at::date=$2::date
+			)
+		`, userID, yesterday).Scan(&yesterdayHadDiagnostic); err != nil {
+			return fmt.Errorf("check yesterday diagnostic activity: %w", err)
+		}
+
+		if hadYesterdaySnapshot && (yesterdayQuestions > 0 || yesterdayHadDiagnostic) {
+			newStreak = yesterdayStreak + 1
+		}
+
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO dashboard_daily_snapshots (user_id, snapshot_date, streak_count, questions_solved, mastery_score, topics_completed, last_activity_at, computed_at)
+			VALUES ($1::uuid, $2::date, $3, 0, 0, 0, NOW(), NOW())
+			ON CONFLICT (user_id, snapshot_date) DO NOTHING
+		`, userID, today, newStreak); err != nil {
+			return fmt.Errorf("ensure dashboard snapshot row: %w", err)
+		}
+	}
+
+	res, err = tx.Exec(ctx, `
+		UPDATE dashboard_daily_snapshots
+		SET mastery_score = COALESCE((SELECT AVG(mastery_score) FROM user_topic_progress WHERE user_id=$1::uuid AND status <> 'not_started'::learning_progress_status),0),
+		    topics_completed = COALESCE((SELECT COUNT(*) FROM user_topic_progress WHERE user_id=$1::uuid AND status='completed'::learning_progress_status),0),
+		    last_activity_at = GREATEST(dashboard_daily_snapshots.last_activity_at, NOW()),
+		    computed_at = NOW()
+		WHERE user_id=$1::uuid AND snapshot_date=$2::date
+	`, userID, today)
+	if err != nil {
+		return fmt.Errorf("update dashboard snapshot from diagnostic: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("update dashboard snapshot from diagnostic: no rows affected")
 	}
 
 	res, err := tx.Exec(ctx, `
@@ -569,7 +686,43 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	if res.RowsAffected() == 0 {
 		return tx.Commit(ctx)
 	}
+
 	return tx.Commit(ctx)
+}
+
+func (r *Repository) ensureUnlocksForUserTx(ctx context.Context, tx pgx.Tx, userID, prerequisiteTopicID string) error {
+	rows, err := tx.Query(ctx, `SELECT topic_id::text FROM topic_prerequisites WHERE prerequisite_id=$1::uuid`, prerequisiteTopicID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var topicID string
+		if err := rows.Scan(&topicID); err != nil {
+			return err
+		}
+		var blocked int
+		if err := tx.QueryRow(ctx, `
+			SELECT COUNT(*)
+			FROM topic_prerequisites tp
+			LEFT JOIN user_topic_progress utp
+			  ON utp.user_id=$1::uuid AND utp.topic_id=tp.prerequisite_id
+			WHERE tp.topic_id=$2::uuid
+			  AND COALESCE(utp.mastery_score,0) < 80
+		`, userID, topicID).Scan(&blocked); err != nil {
+			return err
+		}
+		if blocked == 0 {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, completed_at, external_solved_count, total_external_questions, diagnostic_mastery)
+				VALUES ($1::uuid,$2::uuid,'in_progress',0,NULL,0,0,0)
+				ON CONFLICT (user_id, topic_id) DO NOTHING
+			`, userID, topicID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (r *Repository) MarkAttemptExpired(ctx context.Context, attemptID string) error {

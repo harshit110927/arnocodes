@@ -133,3 +133,12 @@ The backend now enforces stricter production safety in repository SQL:
 - State updates check `RowsAffected()` to prevent silent no-op races.
 
 These changes harden multi-request and multi-worker concurrency without changing public API contracts.
+
+## Dashboard Read Model + External Mastery Integration
+
+- External solved questions are ingested into `external_question_activity` with idempotent uniqueness (`user_id + platform + platform_question_id`).
+- `user_topic_progress` stores `external_solved_count`, `total_external_questions`, and persisted `mastery_score` (write-time update only).
+- Unlock rule is transactional: a topic unlocks only when every prerequisite has mastery >= 80.
+- Completion rule is transactional: status transitions to `completed` when mastery >= 80.
+- Diagnostic finalization updates topic mastery from diagnostic percentages and re-runs unlock checks.
+- Dashboard reads from precomputed tables: `dashboard_daily_snapshots`, `daily_activity`, `user_activity_feed`, `user_topic_progress`, and `events`.

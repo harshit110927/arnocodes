@@ -54,7 +54,7 @@ Do not consume unversioned feature routes from frontend.
 - `POST /api/v1/diagnostic/{attemptId}/submit`
 
 ### Platform Sync
-- `POST /api/v1/platform-sync/trigger`
+- `POST /api/v1/platform-sync/trigger` (queues backend profile sync; no client solve payload)
 - `GET /api/v1/platform-sync/jobs/{jobId}`
 
 ### AI
@@ -123,3 +123,9 @@ Use:
 - `docs/API_LOCAL_TESTING.md`
 
 to validate full diagnostic flow before frontend release.
+
+## Dashboard Endpoint
+
+- `GET /api/v1/dashboard`
+  - Returns snapshot summary, heatmap, recent activity, topic mastery, weak topics, and upcoming events.
+  - Read-only and optimized for precomputed/snapshot-backed reads.

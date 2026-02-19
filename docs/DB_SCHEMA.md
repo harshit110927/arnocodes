@@ -514,3 +514,65 @@ Stores per-topic aggregated results for a diagnostic attempt.
 - Used to update `user_topic_progress` with highest-score retention.
 - Keeps attempt scoring auditable and immutable after submission.
 - Recommended index: `(attempt_id, topic_id)`.
+
+---
+
+## 28. `external_question_activity`
+
+```sql
+external_question_activity (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  platform TEXT,
+  platform_question_id TEXT,
+  title TEXT,
+  topic_id UUID NOT NULL REFERENCES topics(id),
+  difficulty TEXT,
+  solved_at TIMESTAMP,
+  created_at TIMESTAMP,
+  UNIQUE (user_id, platform, platform_question_id)
+)
+```
+
+Tracks solved external-platform questions only. Supports idempotent upsert during sync and mastery updates.
+
+Recommended index:
+- `(user_id, solved_at DESC)`
+
+---
+
+## 29. `user_activity_feed`
+
+```sql
+user_activity_feed (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  source TEXT,
+  title TEXT,
+  topic_id UUID NULL REFERENCES topics(id),
+  difficulty TEXT,
+  link TEXT,
+  solved_at TIMESTAMP,
+  created_at TIMESTAMP
+)
+```
+
+Unified recent-activity read model for dashboard (external/diagnostic/learning/coding events).
+
+Recommended index:
+- `(user_id, solved_at DESC)`
+
+---
+
+## `user_topic_progress` (external mastery additions)
+
+Additional columns:
+- `external_solved_count INT DEFAULT 0`
+- `total_external_questions INT DEFAULT 0`
+- `diagnostic_mastery FLOAT DEFAULT 0`
+- `mastery_score FLOAT DEFAULT 0`
+
+Rules:
+- Mastery is stored and updated incrementally.
+- External mastery updates are write-time only (never recomputed on dashboard read).
+- `mastery_score` is persisted as `GREATEST(diagnostic_mastery, external_mastery)` so external progress never lowers diagnostic mastery.
