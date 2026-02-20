@@ -28,6 +28,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc(apiV1BasePath+"/platform-sync/trigger", h.PlatformSyncTriggerHandler)
 	mux.HandleFunc(apiV1BasePath+"/platform-sync/jobs/", h.PlatformSyncJobHandler)
+	mux.HandleFunc(apiV1BasePath+"/ide/submit", h.IDESubmitHandler)
+	mux.HandleFunc(apiV1BasePath+"/ide/status", h.IDEStatusHandler)
+	mux.HandleFunc(apiV1BasePath+"/ide/run", h.IDERunHandler)
 
 	mux.HandleFunc(apiV1BasePath+"/ai/query", h.AIQueryHandler)
 	mux.HandleFunc(apiV1BasePath+"/ai/code-helper/step", h.AICodeHelperStepHandler)

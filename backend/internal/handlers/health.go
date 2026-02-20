@@ -7,6 +7,7 @@ import (
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
+	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
 
@@ -17,15 +18,17 @@ type Handler struct {
 	assessmentService *assessment.Service
 	learningRepo      *learning.Repository
 	dashboardRepo     *dashboard.Repository
+	ideService        *ide.Service
 }
 
-func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, learningRepo *learning.Repository, dashboardRepo *dashboard.Repository) *Handler {
+func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, learningRepo *learning.Repository, dashboardRepo *dashboard.Repository, ideService *ide.Service) *Handler {
 	return &Handler{
 		config:            cfg,
 		assessmentRepo:    assessmentRepo,
 		assessmentService: assessment.NewService(assessmentRepo),
 		learningRepo:      learningRepo,
 		dashboardRepo:     dashboardRepo,
+		ideService:        ideService,
 	}
 }
 

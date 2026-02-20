@@ -8,6 +8,7 @@ import (
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
+	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/learning"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,6 +21,7 @@ func TestRunSmokeCheckAllPass(t *testing.T) {
 		assessment.NewRepository(pool),
 		learning.NewRepository(pool),
 		dashboard.NewRepository(pool),
+		ide.NewService(ide.NewRepository(pool), nil, learning.NewRepository(pool)),
 	)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

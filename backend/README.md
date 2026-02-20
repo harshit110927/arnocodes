@@ -79,3 +79,73 @@ cd backend
 node test.js
 ```
 Full walkthrough: `../docs/LOCAL_TESTING_WITH_TEST_JS.md`.
+
+## Docker-based IDE evaluation worker
+
+### New IDE endpoints
+- `POST /api/v1/ide/submit`
+- `GET /api/v1/ide/status?id={submission_id}`
+- `POST /api/v1/ide/run`
+
+### Docker requirement
+Docker Engine must be installed and running on worker hosts. The worker executes untrusted code in one-off containers.
+
+Pre-pull required images:
+```bash
+docker pull gcc:latest
+docker pull openjdk:17
+docker pull python:3.11
+docker pull node:18
+```
+
+### Security controls
+The evaluator runs every test case with:
+- `--network=none`
+- `--memory=128m`
+- `--cpus=0.5`
+- `--rm`
+
+This blocks outbound networking, limits resource abuse, and destroys containers after each run.
+
+### Local worker run
+The IDE worker is started from `cmd/api/main.go` with the API process.
+
+Example env:
+```bash
+export DATABASE_URL='postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable'
+export PORT=8080
+```
+
+Run backend (starts HTTP server + assessment worker + IDE worker):
+```bash
+cd backend
+go run cmd/api/main.go
+```
+
+### Manual IDE test flow
+Submit:
+```bash
+curl -s -X POST http://localhost:8080/api/v1/ide/submit \
+  -H 'Content-Type: application/json' \
+  -H 'X-User-ID: 00000000-0000-0000-0000-000000000001' \
+  -d '{"question_id":"22222222-2222-2222-2222-222222222221","language":"python","code":"print(input())"}'
+```
+
+Check status:
+```bash
+curl -s 'http://localhost:8080/api/v1/ide/status?id=<submission_id>' -H 'X-User-ID: 00000000-0000-0000-0000-000000000001'
+```
+
+Sample run (non-persistent, no mastery update):
+```bash
+curl -s -X POST http://localhost:8080/api/v1/ide/run \
+  -H 'Content-Type: application/json' \
+  -H 'X-User-ID: 00000000-0000-0000-0000-000000000001' \
+  -d '{"question_id":"22222222-2222-2222-2222-222222222221","language":"python","code":"print(input())"}'
+```
+
+### Production recommendations
+- Run workers on dedicated judge nodes with Docker daemon isolation.
+- Scale workers horizontally; each process polls DB with `FOR UPDATE SKIP LOCKED`.
+- Keep worker goroutine count bounded (1 polling loop per process is sufficient initially).
+- Tune DB pool for worker traffic (for this repo baseline: max 50 / min 10 connections).

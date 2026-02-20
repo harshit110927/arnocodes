@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 )
 
@@ -35,6 +36,19 @@ type answerDiagnosticRequest struct {
 	SelectedOption *int   `json:"selected_option,omitempty"`
 	Code           string `json:"code,omitempty"`
 	Language       string `json:"language,omitempty"`
+}
+
+type ideSubmitRequest struct {
+	AttemptID  *string `json:"attempt_id,omitempty"`
+	QuestionID string  `json:"question_id"`
+	Code       string  `json:"code"`
+	Language   string  `json:"language"`
+}
+
+type ideRunRequest struct {
+	QuestionID string `json:"question_id"`
+	Code       string `json:"code"`
+	Language   string `json:"language"`
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload APIResponse) {
@@ -503,6 +517,89 @@ func (h *Handler) PlatformSyncJobHandler(w http.ResponseWriter, r *http.Request)
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform sync job endpoint placeholder"})
 }
+
+func (h *Handler) IDESubmitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	var req ideSubmitRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "invalid request body"})
+		return
+	}
+	if req.QuestionID == "" || req.Code == "" || req.Language == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "question_id, code and language are required"})
+		return
+	}
+	id, err := h.ideService.Submit(r.Context(), userID, ide.Submission{AttemptID: req.AttemptID, QuestionID: req.QuestionID, Code: req.Code, Language: req.Language})
+	if err != nil {
+		if errors.Is(err, ide.ErrNotFound) {
+			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to submit code"})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submission queued", Data: map[string]string{"submission_id": id}})
+}
+
+func (h *Handler) IDEStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(r.URL.Query().Get("id"))
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "id is required"})
+		return
+	}
+	status, err := h.ideService.Status(r.Context(), userID, id)
+	if err != nil {
+		writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "submission status", Data: status})
+}
+
+func (h *Handler) IDERunHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	var req ideRunRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "invalid request body"})
+		return
+	}
+	if req.QuestionID == "" || req.Code == "" || req.Language == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "question_id, code and language are required"})
+		return
+	}
+	res, err := h.ideService.RunSample(r.Context(), userID, ide.Submission{QuestionID: req.QuestionID, Code: req.Code, Language: req.Language})
+	if err != nil {
+		if errors.Is(err, ide.ErrNotFound) {
+			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to run sample tests"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "sample run result", Data: res})
+}
+
 func (h *Handler) AIQueryHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		methodNotAllowed(w)

@@ -15,6 +15,7 @@ import (
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/database"
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
+	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
 
@@ -38,14 +39,17 @@ func main() {
 	assessmentRepo := assessment.NewRepository(db.Pool())
 	learningRepo := learning.NewRepository(db.Pool())
 	dashboardRepo := dashboard.NewRepository(db.Pool())
+	ideRepo := ide.NewRepository(db.Pool())
+	ideService := ide.NewService(ideRepo, ide.NewDockerEvaluator(), learningRepo)
 
-	h := handlers.NewHandler(cfg, assessmentRepo, learningRepo, dashboardRepo)
+	h := handlers.NewHandler(cfg, assessmentRepo, learningRepo, dashboardRepo, ideService)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
 	go assessment.StartCodingEvaluationWorker(workerCtx, assessment.NewService(assessmentRepo), 10*time.Second, 20)
+	go ide.StartIDEWorker(workerCtx, db.Pool(), ideRepo, ideRepo, ide.NewDockerEvaluator(), learningRepo)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: mux}

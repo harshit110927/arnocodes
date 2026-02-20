@@ -9,12 +9,13 @@ import (
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
+	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
 
 func setupMux() *http.ServeMux {
 	cfg := &config.Config{Environment: "test"}
-	h := NewHandler(cfg, assessment.NewRepository(nil), learning.NewRepository(nil), dashboard.NewRepository(nil))
+	h := NewHandler(cfg, assessment.NewRepository(nil), learning.NewRepository(nil), dashboard.NewRepository(nil), ide.NewService(ide.NewRepository(nil), nil, nil))
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	return mux
@@ -61,5 +62,24 @@ func TestDiagnosticAttemptRoutesExist(t *testing.T) {
 		if rr.Code != tc.want {
 			t.Fatalf("%s %s expected %d got %d", tc.method, tc.path, tc.want, rr.Code)
 		}
+	}
+}
+
+func TestIDERoutesExist(t *testing.T) {
+	mux := setupMux()
+
+	postReq := httptest.NewRequest(http.MethodPost, "/api/v1/ide/submit", bytes.NewBufferString(`{"question_id":"q","code":"print(1)","language":"python"}`))
+	postReq.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, postReq)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for ide submit without user, got %d", rr.Code)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/ide/status?id=test", nil)
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, statusReq)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for ide status without user, got %d", rr.Code)
 	}
 }
