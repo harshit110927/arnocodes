@@ -6,22 +6,25 @@ import (
 
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
-	"github.com/harshit110927/arnocodes/backend/internal/learning"
+	"github.com/harshit110927/arnocodes/backend/internal/learning/activity"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestRunSmokeCheckAllPass(t *testing.T) {
 	pool := &pgxpool.Pool{}
+	assessmentRepo := assessment.NewRepository(pool)
 	h := handlers.NewHandler(
 		&config.Config{Environment: "test"},
-		assessment.NewRepository(pool),
-		learning.NewRepository(pool),
+		assessmentRepo,
+		course.NewCourseRepository(pool),
+		handlers.NewAssessmentCourseStatusAdapter(assessmentRepo),
 		dashboard.NewRepository(pool),
-		ide.NewService(ide.NewRepository(pool), nil, learning.NewRepository(pool)),
+		ide.NewService(ide.NewRepository(pool), nil, activity.NewActivityRepository(pool)),
 	)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

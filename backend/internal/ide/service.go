@@ -7,7 +7,7 @@ import (
 
 var ErrNotFound = errors.New("NOT_FOUND")
 
-type MasteryUpdater interface {
+type ServiceMasteryUpdater interface {
 	SaveLearningQuestionCompletion(ctx context.Context, userID, questionID string) error
 }
 
@@ -16,7 +16,7 @@ type Service struct {
 	evaluator Evaluator
 }
 
-func NewService(repo *Repository, evaluator Evaluator, masteryUpdate MasteryUpdater) *Service {
+func NewService(repo *Repository, evaluator Evaluator, masteryUpdate ServiceMasteryUpdater) *Service {
 	_ = masteryUpdate
 	return &Service{repo: repo, evaluator: evaluator}
 }

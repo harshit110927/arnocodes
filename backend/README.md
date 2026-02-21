@@ -9,8 +9,17 @@ Backend service built with Go, PostgreSQL-ready infrastructure, and clean modula
 - `internal/database/` - connection, migrations, seeding
 - `internal/handlers/` - HTTP handlers and route registration
 - `internal/assessment/` - assessment repository skeleton
-- `internal/learning/` - learning repository skeleton
+- `internal/course/` - read-only course access (unlock DAG + gated reads)
+- `internal/learning/activity/` - learning activity write paths
 - `internal/dashboard/` - dashboard repository skeleton
+
+
+## Domain Boundaries
+- `course` is read-only: computes derived unlock state from persisted mastery + prerequisites and never writes unlock flags.
+- `learning/activity` owns learning question completion write paths used by async evaluation and mastery flows.
+- `assessment` owns diagnostic state; `course` only gates reads on diagnostic completion.
+- `ide` owns coding submission evaluation pipeline; it does not compute unlocks.
+- Unlock remains derived state (not persisted), so external-sync mastery updates are reflected automatically on next course read.
 
 ## Running Locally
 ```bash
@@ -46,7 +55,7 @@ On startup backend now does:
 - `DELETE /api/v1/profiles/me/platform-connections/{platform}`
 
 ### Protected resources
-Dashboard and learning APIs are backend guarded. If diagnostic is incomplete they return:
+Dashboard and course APIs are backend guarded. If diagnostic is incomplete they return:
 ```json
 { "error": "DIAGNOSTIC_REQUIRED" }
 ```
@@ -149,3 +158,37 @@ curl -s -X POST http://localhost:8080/api/v1/ide/run \
 - Scale workers horizontally; each process polls DB with `FOR UPDATE SKIP LOCKED`.
 - Keep worker goroutine count bounded (1 polling loop per process is sufficient initially).
 - Tune DB pool for worker traffic (for this repo baseline: max 50 / min 10 connections).
+
+## Course Access Layer
+
+### Endpoints
+- `GET /api/v1/course`
+- `GET /api/v1/course/topic/{topic_id}`
+- `GET /api/v1/course/subtopic/{subtopic_id}`
+
+### Unlock rules
+- Diagnostic submission is mandatory for all course reads.
+- Topic unlock is derived at read time from persisted `mastery_score`:
+  - `mastery_score >= 80` => `completed`
+  - root topic (no prerequisites) => `unlocked`
+  - all prerequisites `mastery_score >= 80` => `unlocked`
+  - otherwise => `locked`
+
+### Derived-state principle
+- Unlock state is **never persisted** separately.
+- APIs compute deterministic unlock state from database truth (`user_topic_progress` + `topic_prerequisites`).
+- No frontend-provided unlock or completion input is trusted.
+
+### External verification model
+- External question solves are verified only by platform sync jobs.
+- `external_question_activity` and `user_topic_progress.mastery_score` are persisted by sync/evaluation pipelines.
+- Course APIs are read-only and automatically reflect updated mastery on next request.
+
+### Security guarantees
+- Server-side access control enforces topic/subtopic lock checks.
+- Locked topic/subtopic access returns `403` with forbidden payload.
+- No manual “mark solved” endpoint exists in course access APIs.
+
+### Concurrency safety
+- Course endpoints perform no writes.
+- Reads are idempotent, stateless, restart-safe, and concurrency-safe.

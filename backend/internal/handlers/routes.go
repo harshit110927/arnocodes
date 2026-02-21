@@ -17,6 +17,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(apiV1BasePath+"/dashboard/heatmap", h.DashboardHeatmapHandler)
 	mux.HandleFunc(apiV1BasePath+"/dashboard/leaderboards", h.DashboardLeaderboardsHandler)
 
+	mux.HandleFunc(apiV1BasePath+"/course", h.CourseRouter)
+	mux.HandleFunc(apiV1BasePath+"/course/", h.CourseRouter)
 	mux.HandleFunc(apiV1BasePath+"/course/structure", h.CourseStructureHandler)
 	mux.HandleFunc(apiV1BasePath+"/topics", h.TopicsRouter)
 	mux.HandleFunc(apiV1BasePath+"/topics/", h.TopicsRouter)

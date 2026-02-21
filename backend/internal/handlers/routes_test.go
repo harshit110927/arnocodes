@@ -8,14 +8,15 @@ import (
 
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
-	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
 
 func setupMux() *http.ServeMux {
 	cfg := &config.Config{Environment: "test"}
-	h := NewHandler(cfg, assessment.NewRepository(nil), learning.NewRepository(nil), dashboard.NewRepository(nil), ide.NewService(ide.NewRepository(nil), nil, nil))
+	assessmentRepo := assessment.NewRepository(nil)
+	h := NewHandler(cfg, assessmentRepo, course.NewCourseRepository(nil), NewAssessmentCourseStatusAdapter(assessmentRepo), dashboard.NewRepository(nil), ide.NewService(ide.NewRepository(nil), nil, nil))
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	return mux
@@ -81,5 +82,22 @@ func TestIDERoutesExist(t *testing.T) {
 	mux.ServeHTTP(rr, statusReq)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for ide status without user, got %d", rr.Code)
+	}
+}
+
+func TestCourseAccessRoutesRequireUserID(t *testing.T) {
+	mux := setupMux()
+	paths := []string{
+		"/api/v1/course",
+		"/api/v1/course/topic/22222222-2222-2222-2222-222222222221",
+		"/api/v1/course/subtopic/33333333-3333-3333-3333-333333333331",
+	}
+	for _, p := range paths {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for %s, got %d", p, rr.Code)
+		}
 	}
 }

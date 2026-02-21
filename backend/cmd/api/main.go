@@ -12,12 +12,25 @@ import (
 
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/database"
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
-	"github.com/harshit110927/arnocodes/backend/internal/learning"
+	"github.com/harshit110927/arnocodes/backend/internal/learning/activity"
 )
+
+type assessmentCourseStatusAdapter struct {
+	repo *assessment.Repository
+}
+
+func (a assessmentCourseStatusAdapter) GetUserStatus(ctx context.Context, userID string) (course.DiagnosticUserStatus, error) {
+	status, err := a.repo.GetUserStatus(ctx, userID)
+	if err != nil {
+		return course.DiagnosticUserStatus{}, err
+	}
+	return course.DiagnosticUserStatus{DiagnosticCompleted: status.DiagnosticCompleted}, nil
+}
 
 func main() {
 	cfg := config.Load()
@@ -37,19 +50,20 @@ func main() {
 	}
 
 	assessmentRepo := assessment.NewRepository(db.Pool())
-	learningRepo := learning.NewRepository(db.Pool())
+	courseRepo := course.NewCourseRepository(db.Pool())
+	learningActivityRepo := activity.NewActivityRepository(db.Pool())
 	dashboardRepo := dashboard.NewRepository(db.Pool())
 	ideRepo := ide.NewRepository(db.Pool())
-	ideService := ide.NewService(ideRepo, ide.NewDockerEvaluator(), learningRepo)
+	ideService := ide.NewService(ideRepo, ide.NewDockerEvaluator(), learningActivityRepo)
 
-	h := handlers.NewHandler(cfg, assessmentRepo, learningRepo, dashboardRepo, ideService)
+	h := handlers.NewHandler(cfg, assessmentRepo, courseRepo, assessmentCourseStatusAdapter{repo: assessmentRepo}, dashboardRepo, ideService)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
 	go assessment.StartCodingEvaluationWorker(workerCtx, assessment.NewService(assessmentRepo), 10*time.Second, 20)
-	go ide.StartIDEWorker(workerCtx, db.Pool(), ideRepo, ideRepo, ide.NewDockerEvaluator(), learningRepo)
+	go ide.StartIDEWorker(workerCtx, db.Pool(), ideRepo, ideRepo, ide.NewDockerEvaluator(), learningActivityRepo)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: mux}

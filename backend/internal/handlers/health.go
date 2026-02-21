@@ -6,27 +6,45 @@ import (
 
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
-	"github.com/harshit110927/arnocodes/backend/internal/learning"
 )
+
+type assessmentCourseStatusAdapter struct {
+	repo *assessment.Repository
+}
+
+func NewAssessmentCourseStatusAdapter(repo *assessment.Repository) course.DiagnosticStatusProvider {
+	return assessmentCourseStatusAdapter{repo: repo}
+}
+
+func (a assessmentCourseStatusAdapter) GetUserStatus(ctx context.Context, userID string) (course.DiagnosticUserStatus, error) {
+	status, err := a.repo.GetUserStatus(ctx, userID)
+	if err != nil {
+		return course.DiagnosticUserStatus{}, err
+	}
+	return course.DiagnosticUserStatus{DiagnosticCompleted: status.DiagnosticCompleted}, nil
+}
 
 type Handler struct {
 	config            *config.Config
 	router            http.Handler
 	assessmentRepo    *assessment.Repository
 	assessmentService *assessment.Service
-	learningRepo      *learning.Repository
+	courseRepo        *course.CourseRepository
+	courseService     *course.CourseService
 	dashboardRepo     *dashboard.Repository
 	ideService        *ide.Service
 }
 
-func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, learningRepo *learning.Repository, dashboardRepo *dashboard.Repository, ideService *ide.Service) *Handler {
+func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, courseRepo *course.CourseRepository, courseStatusProvider course.DiagnosticStatusProvider, dashboardRepo *dashboard.Repository, ideService *ide.Service) *Handler {
 	return &Handler{
 		config:            cfg,
 		assessmentRepo:    assessmentRepo,
 		assessmentService: assessment.NewService(assessmentRepo),
-		learningRepo:      learningRepo,
+		courseRepo:        courseRepo,
+		courseService:     course.NewCourseService(courseRepo, courseStatusProvider),
 		dashboardRepo:     dashboardRepo,
 		ideService:        ideService,
 	}

@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
+	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
+	"github.com/jackc/pgx/v5"
 )
 
 const apiV1BasePath = "/api/v1"
@@ -208,6 +210,33 @@ func (h *Handler) DashboardLeaderboardsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *Handler) CourseStructureHandler(w http.ResponseWriter, r *http.Request) {
+	h.CourseHandler(w, r)
+}
+
+func (h *Handler) CourseRouter(w http.ResponseWriter, r *http.Request) {
+	parts := pathParts(r.URL.Path)
+	if len(parts) == 1 && parts[0] == "course" {
+		h.CourseHandler(w, r)
+		return
+	}
+	if len(parts) == 3 && parts[0] == "course" && parts[1] == "topic" {
+		h.CourseTopicHandler(w, r)
+		return
+	}
+	if len(parts) == 3 && parts[0] == "course" && parts[1] == "subtopic" {
+		h.CourseSubtopicHandler(w, r)
+		return
+	}
+	writeJSON(w, http.StatusNotFound, APIResponse{Status: "error", Message: "not found"})
+}
+
+func writeForbiddenMessage(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "forbidden", "message": message})
+}
+
+func (h *Handler) CourseHandler(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureDiagnosticCompleted(w, r) {
 		return
 	}
@@ -215,7 +244,86 @@ func (h *Handler) CourseStructureHandler(w http.ResponseWriter, r *http.Request)
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "course structure endpoint placeholder"})
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	data, err := h.courseService.GetCourse(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, course.ErrDiagnosticNotCompleted) {
+			writeForbiddenMessage(w, "diagnostic required")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch course"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "course", Data: data})
+}
+
+func (h *Handler) CourseTopicHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	parts := pathParts(r.URL.Path)
+	if len(parts) != 3 || parts[2] == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "topic_id is required"})
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	resp, err := h.courseService.GetTopic(r.Context(), userID, parts[2])
+	if err != nil {
+		if errors.Is(err, course.ErrTopicLocked) {
+			writeForbiddenMessage(w, "topic locked")
+			return
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch topic"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "topic", Data: resp})
+}
+
+func (h *Handler) CourseSubtopicHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureDiagnosticCompleted(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	parts := pathParts(r.URL.Path)
+	if len(parts) != 3 || parts[2] == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "subtopic_id is required"})
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	resp, err := h.courseService.GetSubtopic(r.Context(), userID, parts[2])
+	if err != nil {
+		if errors.Is(err, course.ErrTopicLocked) {
+			writeForbiddenMessage(w, "topic locked")
+			return
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch subtopic"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "subtopic", Data: resp})
 }
 
 func (h *Handler) TopicsRouter(w http.ResponseWriter, r *http.Request) {
