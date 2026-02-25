@@ -1,6 +1,41 @@
 module github.com/harshit110927/arnocodes/backend
 
-go 1.21
+go 1.24.0
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
+
+require (
+	github.com/jackc/pgx/v5 v5.0.0
+	github.com/joho/godotenv v1.5.1
+)
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
