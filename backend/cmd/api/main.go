@@ -18,6 +18,7 @@ import (
 	"github.com/harshit110927/arnocodes/backend/internal/handlers"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
 	"github.com/harshit110927/arnocodes/backend/internal/learning/activity"
+	"github.com/harshit110927/arnocodes/backend/internal/middleware"
 )
 
 type assessmentCourseStatusAdapter struct {
@@ -56,7 +57,12 @@ func main() {
 	ideRepo := ide.NewRepository(db.Pool())
 	ideService := ide.NewService(ideRepo, ide.NewDockerEvaluator(), learningActivityRepo)
 
-	h := handlers.NewHandler(cfg, assessmentRepo, courseRepo, assessmentCourseStatusAdapter{repo: assessmentRepo}, dashboardRepo, ideService)
+	authMiddleware, err := middleware.NewJWKSAuthMiddleware(cfg.SupabaseURL, cfg.SupabaseAudience)
+	if err != nil {
+		log.Fatalf("auth middleware init failed: %v", err)
+	}
+
+	h := handlers.NewHandler(cfg, assessmentRepo, courseRepo, assessmentCourseStatusAdapter{repo: assessmentRepo}, dashboardRepo, ideService, authMiddleware)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

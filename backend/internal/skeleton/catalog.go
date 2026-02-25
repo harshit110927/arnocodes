@@ -36,7 +36,7 @@ func APICatalog() []EndpointSpec {
 		{Name: "Health", Method: http.MethodGet, Path: "/api/v1/health", ExpectedStatus: http.StatusOK},
 		{Name: "Diagnostic start requires user", Method: http.MethodPost, Path: "/api/v1/diagnostic/start", ExpectedStatus: http.StatusUnauthorized, Body: `{"selected_topics":["22222222-2222-2222-2222-222222222221"]}`},
 		{Name: "Protected dashboard requires user", Method: http.MethodGet, Path: "/api/v1/dashboard/summary", ExpectedStatus: http.StatusUnauthorized},
-		{Name: "Internal catalog", Method: http.MethodGet, Path: "/api/v1/internal/api-catalog", ExpectedStatus: http.StatusOK},
+		{Name: "Internal catalog requires user", Method: http.MethodGet, Path: "/api/v1/internal/api-catalog", ExpectedStatus: http.StatusUnauthorized},
 	}
 }
 

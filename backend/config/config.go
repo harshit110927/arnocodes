@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	Port         string
-	DatabaseURL  string
-	RedisURL     string
-	Environment  string
+	Port             string
+	DatabaseURL      string
+	RedisURL         string
+	Environment      string
+	SupabaseURL      string
+	SupabaseAudience string
 }
 
 func Load() *Config {
@@ -21,10 +23,12 @@ func Load() *Config {
 	}
 
 	cfg := &Config{
-		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/dbname?sslmode=disable"),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379"),
-		Environment: getEnv("ENVIRONMENT", "development"),
+		Port:             getEnv("PORT", "8080"),
+		DatabaseURL:      getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/dbname?sslmode=disable"),
+		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379"),
+		Environment:      getEnv("ENVIRONMENT", "development"),
+		SupabaseURL:      getEnv("SUPABASE_URL", ""),
+		SupabaseAudience: getEnv("SUPABASE_AUDIENCE", "authenticated"),
 	}
 
 	return cfg

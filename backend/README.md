@@ -192,3 +192,18 @@ curl -s -X POST http://localhost:8080/api/v1/ide/run \
 ### Concurrency safety
 - Course endpoints perform no writes.
 - Reads are idempotent, stateless, restart-safe, and concurrency-safe.
+
+
+## Authentication & Authorization
+- Backend uses stateless JWT auth (Supabase Auth, RS256).
+- `internal/middleware/auth.go` verifies `Authorization: Bearer <token>` using Supabase JWKS, validates issuer/audience/expiry, and injects `user_id` into request context.
+- All `/api/v1/*` routes are protected by middleware, except `/api/v1/health`; `/health` remains public.
+- Handlers derive user identity from context only (never from frontend payload), and repositories keep explicit `WHERE user_id = $1` filtering.
+- Row-Level Security (RLS) is enabled on user-owned tables as defense-in-depth.
+- Backend still uses service role DB access; application-level ownership filters remain mandatory for deterministic API behavior.
+
+### RLS Enforcement Strategy
+- Backend currently connects using a privileged/service role; in that mode, PostgreSQL RLS is bypassed at runtime.
+- RLS policies are still maintained as defense-in-depth and to support future anon-role/runtime-role migration.
+- Primary tenant isolation in current runtime remains explicit query scoping with `WHERE user_id = $1`.
+- To make RLS enforce per-request constraints at runtime, backend connections must use an anon/user-scoped DB role.

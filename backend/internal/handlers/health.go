@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -27,6 +28,10 @@ func (a assessmentCourseStatusAdapter) GetUserStatus(ctx context.Context, userID
 	return course.DiagnosticUserStatus{DiagnosticCompleted: status.DiagnosticCompleted}, nil
 }
 
+type AuthProtector interface {
+	Middleware(next http.Handler) http.Handler
+}
+
 type Handler struct {
 	config            *config.Config
 	router            http.Handler
@@ -36,9 +41,10 @@ type Handler struct {
 	courseService     *course.CourseService
 	dashboardRepo     *dashboard.Repository
 	ideService        *ide.Service
+	authMiddleware    AuthProtector
 }
 
-func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, courseRepo *course.CourseRepository, courseStatusProvider course.DiagnosticStatusProvider, dashboardRepo *dashboard.Repository, ideService *ide.Service) *Handler {
+func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, courseRepo *course.CourseRepository, courseStatusProvider course.DiagnosticStatusProvider, dashboardRepo *dashboard.Repository, ideService *ide.Service, authMiddleware AuthProtector) *Handler {
 	return &Handler{
 		config:            cfg,
 		assessmentRepo:    assessmentRepo,
@@ -47,6 +53,7 @@ func NewHandler(cfg *config.Config, assessmentRepo *assessment.Repository, cours
 		courseService:     course.NewCourseService(courseRepo, courseStatusProvider),
 		dashboardRepo:     dashboardRepo,
 		ideService:        ideService,
+		authMiddleware:    authMiddleware,
 	}
 }
 

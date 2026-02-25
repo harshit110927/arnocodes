@@ -25,6 +25,7 @@ func TestRunSmokeCheckAllPass(t *testing.T) {
 		handlers.NewAssessmentCourseStatusAdapter(assessmentRepo),
 		dashboard.NewRepository(pool),
 		ide.NewService(ide.NewRepository(pool), nil, activity.NewActivityRepository(pool)),
+		nil,
 	)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

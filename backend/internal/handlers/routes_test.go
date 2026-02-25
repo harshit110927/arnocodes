@@ -11,12 +11,27 @@ import (
 	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/dashboard"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
+	"github.com/harshit110927/arnocodes/backend/internal/middleware"
 )
+
+type testAuthMiddleware struct{}
+
+func (testAuthMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uid := r.Header.Get("X-User-ID")
+		if uid == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"UNAUTHORIZED"}`))
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(middleware.WithUserID(r.Context(), uid)))
+	})
+}
 
 func setupMux() *http.ServeMux {
 	cfg := &config.Config{Environment: "test"}
 	assessmentRepo := assessment.NewRepository(nil)
-	h := NewHandler(cfg, assessmentRepo, course.NewCourseRepository(nil), NewAssessmentCourseStatusAdapter(assessmentRepo), dashboard.NewRepository(nil), ide.NewService(ide.NewRepository(nil), nil, nil))
+	h := NewHandler(cfg, assessmentRepo, course.NewCourseRepository(nil), NewAssessmentCourseStatusAdapter(assessmentRepo), dashboard.NewRepository(nil), ide.NewService(ide.NewRepository(nil), nil, nil), testAuthMiddleware{})
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 	return mux

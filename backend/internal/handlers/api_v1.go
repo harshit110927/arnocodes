@@ -11,6 +11,7 @@ import (
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/course"
 	"github.com/harshit110927/arnocodes/backend/internal/ide"
+	"github.com/harshit110927/arnocodes/backend/internal/middleware"
 	"github.com/harshit110927/arnocodes/backend/internal/skeleton"
 	"github.com/jackc/pgx/v5"
 )
@@ -83,13 +84,9 @@ func pathParts(path string) []string {
 	return strings.Split(trimmed, "/")
 }
 
-func currentUserID(r *http.Request) string {
-	return strings.TrimSpace(r.Header.Get("X-User-ID"))
-}
-
 func requireUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	uid := currentUserID(r)
-	if uid == "" {
+	uid, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
 		writeErrorCode(w, http.StatusUnauthorized, "UNAUTHORIZED")
 		return "", false
 	}
