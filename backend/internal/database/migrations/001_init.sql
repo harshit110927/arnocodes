@@ -258,3 +258,8 @@ CREATE INDEX IF NOT EXISTS idx_daily_activity_user_date ON daily_activity(user_i
 CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_rank ON leaderboard_entries(leaderboard_id, rank);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_entries_score ON leaderboard_entries(leaderboard_id, score);
 CREATE INDEX IF NOT EXISTS idx_platform_sync_jobs_user_status ON platform_sync_jobs(user_id, status);
+
+
+fmt.Println("DB URL:", os.Getenv("DATABASE_URL"))
+fmt.Println("DB HOST:", os.Getenv("DB_HOST"))
+fmt.Println("DB USER:", os.Getenv("DB_USER"))

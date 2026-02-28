@@ -379,7 +379,7 @@ func (r *Repository) RecordExternalSolve(ctx context.Context, in ExternalSolveIn
 	}
 
 	prevCompleted := status == "completed"
-	res, err := tx.Exec(ctx, `
+	res, err = tx.Exec(ctx, `
 		UPDATE user_topic_progress
 		SET external_solved_count=$3,
 		    total_external_questions=$4,

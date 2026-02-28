@@ -457,6 +457,7 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("assessment repository is not initialized")
 	}
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	var res pgconn.CommandTag
 	if err != nil {
 		return err
 	}
@@ -672,7 +673,7 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("update dashboard snapshot from diagnostic: no rows affected")
 	}
 
-	res, err := tx.Exec(ctx, `
+	res, err = tx.Exec(ctx, `
 		UPDATE test_attempts
 		SET status='submitted',
 		    submitted_at=NOW(),
