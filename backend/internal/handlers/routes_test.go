@@ -70,6 +70,7 @@ func TestDiagnosticAttemptRoutesExist(t *testing.T) {
 		{http.MethodPost, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/coding", http.StatusUnauthorized},
 		{http.MethodGet, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/status", http.StatusUnauthorized},
 		{http.MethodPost, "/api/v1/diagnostic/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/submit", http.StatusUnauthorized},
+		{http.MethodGet, "/api/v1/platform-sync/overview", http.StatusUnauthorized},
 	}
 	for _, tc := range cases {
 		req := httptest.NewRequest(tc.method, tc.path, nil)

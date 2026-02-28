@@ -54,6 +54,11 @@ type ideRunRequest struct {
 	Language   string `json:"language"`
 }
 
+type platformConnectionRequest struct {
+	Platform string `json:"platform"`
+	Handle   string `json:"handle"`
+}
+
 func writeJSON(w http.ResponseWriter, statusCode int, payload APIResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
@@ -82,6 +87,18 @@ func pathParts(path string) []string {
 		return []string{}
 	}
 	return strings.Split(trimmed, "/")
+}
+
+var supportedPlatforms = map[string]bool{
+	"leetcode":   true,
+	"gfg":        true,
+	"codeforces": true,
+	"hackerrank": true,
+	"codechef":   true,
+}
+
+func normalizePlatform(platform string) string {
+	return strings.ToLower(strings.TrimSpace(platform))
 }
 
 func requireUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
@@ -143,11 +160,39 @@ func (h *Handler) ProfileMeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) PlatformConnectionsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
-		writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform list endpoint placeholder"})
+		rows, err := h.dashboardRepo.ListPlatformConnections(r.Context(), userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to list platform connections"})
+			return
+		}
+		writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform connections", Data: rows})
 	case http.MethodPost:
-		writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform connect endpoint placeholder"})
+		var req platformConnectionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "invalid request body"})
+			return
+		}
+		platform := normalizePlatform(req.Platform)
+		if !supportedPlatforms[platform] {
+			writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "unsupported platform"})
+			return
+		}
+		if strings.TrimSpace(req.Handle) == "" {
+			writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "handle is required"})
+			return
+		}
+		conn, err := h.dashboardRepo.UpsertPlatformConnection(r.Context(), userID, platform, strings.TrimSpace(req.Handle))
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to connect platform"})
+			return
+		}
+		writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform connected", Data: conn})
 	default:
 		methodNotAllowed(w)
 	}
@@ -158,12 +203,25 @@ func (h *Handler) PlatformConnectionByNameHandler(w http.ResponseWriter, r *http
 		methodNotAllowed(w)
 		return
 	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
 	parts := pathParts(r.URL.Path)
 	if len(parts) < 4 || parts[3] == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "platform is required"})
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnect endpoint placeholder", Data: map[string]string{"platform": parts[3]}})
+	platform := normalizePlatform(parts[3])
+	if !supportedPlatforms[platform] {
+		writeJSON(w, http.StatusUnprocessableEntity, APIResponse{Status: "error", Message: "unsupported platform"})
+		return
+	}
+	if err := h.dashboardRepo.DeletePlatformConnection(r.Context(), userID, platform); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to disconnect platform"})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform disconnected", Data: map[string]string{"platform": platform}})
 }
 
 func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request) {
@@ -582,6 +640,20 @@ func (h *Handler) DiagnosticSubmitHandler(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "diagnostic submitted"})
 }
 
+func (h *Handler) triggerPlatformSyncWithRetry(ctx context.Context, userID string) error {
+	backoff := []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second}
+	var lastErr error
+	for i := 0; i < len(backoff); i++ {
+		if err := h.dashboardRepo.TriggerPlatformSync(ctx, userID); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+		time.Sleep(backoff[i])
+	}
+	return lastErr
+}
+
 func (h *Handler) writeAssessmentError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, assessment.ErrDiagnosticBlocked):
@@ -609,18 +681,59 @@ func (h *Handler) PlatformSyncTriggerHandler(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	if err := h.dashboardRepo.TriggerPlatformSync(r.Context(), userID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to trigger platform sync"})
+	if err := h.triggerPlatformSyncWithRetry(r.Context(), userID); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Status: "error", Message: "sync is temporarily unavailable; please retry in 5-10 seconds"})
 		return
 	}
-	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform sync trigger accepted"})
+	job, err := h.dashboardRepo.GetLatestPlatformSyncJob(r.Context(), userID)
+	if err != nil {
+		writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform sync trigger accepted"})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "platform sync trigger accepted", Data: map[string]string{"job_id": job.ID}})
 }
+
+func (h *Handler) PlatformSyncOverviewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w)
+		return
+	}
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	overview, err := h.dashboardRepo.GetPlatformSyncOverview(r.Context(), userID, 24, 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch platform sync overview"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform sync overview", Data: overview})
+}
+
 func (h *Handler) PlatformSyncJobHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		methodNotAllowed(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform sync job endpoint placeholder"})
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	parts := pathParts(r.URL.Path)
+	if len(parts) < 3 || parts[2] == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Status: "error", Message: "job_id is required"})
+		return
+	}
+	job, err := h.dashboardRepo.GetPlatformSyncJob(r.Context(), userID, parts[2])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch platform sync job"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "platform sync job", Data: job})
 }
 
 func (h *Handler) IDESubmitHandler(w http.ResponseWriter, r *http.Request) {

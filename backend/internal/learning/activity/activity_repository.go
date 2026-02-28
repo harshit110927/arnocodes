@@ -32,9 +32,44 @@ func (r *ActivityRepository) SaveLearningQuestionCompletion(ctx context.Context,
 }
 
 func (r *ActivityRepository) SaveLearningQuestionCompletionTx(ctx context.Context, tx pgx.Tx, userID, questionID string) error {
-	_ = ctx
-	_ = userID
-	_ = questionID
-	_ = tx
+	var topicID string
+	if err := tx.QueryRow(ctx, `SELECT topic_id::text FROM learning_questions WHERE id=$1::uuid`, questionID).Scan(&topicID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_learning_question_activity (user_id, question_id, solved, solved_at, time_taken_minutes)
+		VALUES ($1::uuid, $2::uuid, true, CURRENT_DATE, NULL)
+		ON CONFLICT (user_id, question_id)
+		DO UPDATE SET solved=true, solved_at=CURRENT_DATE
+	`, userID, questionID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, completed_at)
+		VALUES ($1::uuid, $2::uuid, 'in_progress'::learning_progress_status, 0, NULL)
+		ON CONFLICT (user_id, topic_id) DO NOTHING
+	`, userID, topicID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE user_topic_progress
+		SET status='in_progress'::learning_progress_status
+		WHERE user_id=$1::uuid
+		  AND topic_id=$2::uuid
+		  AND status='not_started'::learning_progress_status
+	`, userID, topicID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_activity_feed (id, user_id, source, title, topic_id, solved_at)
+		VALUES (gen_random_uuid(), $1::uuid, 'ide', 'IDE question completed', $2::uuid, NOW())
+	`, userID, topicID); err != nil {
+		return err
+	}
+
 	return nil
 }

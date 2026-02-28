@@ -471,3 +471,35 @@ go tool cover -func=coverage.out
 - Explicit user isolation validated across all user-owned APIs.
 - Race tests pass consistently.
 - Coverage thresholds met for critical packages.
+
+
+## Appendix: One-Command Backend Flow Script
+
+Run the step-by-step validator:
+
+```bash
+DATABASE_URL=postgres://... \
+SUPABASE_URL=https://<project-ref>.supabase.co \
+TEST_JWT=<supabase-access-token> \
+./backend/scripts/full_backend_test_flow.sh
+```
+
+Notes:
+- If `TEST_JWT` is omitted, the script still validates health + unauthorized guards.
+- With `TEST_JWT`, it validates authenticated diagnostic/course/dashboard/IDE flow checks.
+- Script location: `backend/scripts/full_backend_test_flow.sh`.
+
+
+### Script flow stages (real-user-like order)
+1. Health + auth guard verification
+2. Authenticated profile status
+3. Diagnostic start/next/submit path (or blocked handling)
+4. Course/dashboard gated reads
+5. Platform connect/list/sync/disconnect
+6. IDE sample run + async submit + polling
+
+
+### Platform Sync Retry Verification
+- Validate trigger retries by simulating transient DB failure (or dependency timeout) and confirming 3-attempt exponential backoff behavior.
+- Expected response after final failure: temporary error with guidance to retry after 5–10 seconds.
+- Validate `GET /api/v1/platform-sync/overview` for audit-ready status counts and recent job list.

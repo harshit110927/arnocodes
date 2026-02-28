@@ -65,6 +65,37 @@ type UpcomingEvent struct {
 	EndDate   time.Time `json:"end_date"`
 }
 
+type PlatformConnection struct {
+	ID              string     `json:"id"`
+	Platform        string     `json:"platform"`
+	PlatformHandle  string     `json:"platform_handle"`
+	Status          string     `json:"status"`
+	ConnectedAt     *time.Time `json:"connected_at,omitempty"`
+	LastValidatedAt *time.Time `json:"last_validated_at,omitempty"`
+}
+
+type PlatformSyncJob struct {
+	ID            string     `json:"id"`
+	ConnectionID  string     `json:"connection_id"`
+	Status        string     `json:"status"`
+	TriggerSource string     `json:"trigger_source"`
+	StartedAt     *time.Time `json:"started_at,omitempty"`
+	FinishedAt    *time.Time `json:"finished_at,omitempty"`
+	ErrorMessage  *string    `json:"error_message,omitempty"`
+}
+
+type PlatformSyncOverview struct {
+	Queued       int               `json:"queued"`
+	Running      int               `json:"running"`
+	Succeeded    int               `json:"succeeded"`
+	Failed       int               `json:"failed"`
+	RateLimited  int               `json:"rate_limited"`
+	LastError    string            `json:"last_error,omitempty"`
+	RecentJobs   []PlatformSyncJob `json:"recent_jobs"`
+	WindowHours  int               `json:"window_hours"`
+	TotalInRange int               `json:"total_in_range"`
+}
+
 type DashboardData struct {
 	Summary        Summary         `json:"summary"`
 	Heatmap        []HeatmapPoint  `json:"heatmap"`
@@ -379,7 +410,7 @@ func (r *Repository) RecordExternalSolve(ctx context.Context, in ExternalSolveIn
 	}
 
 	prevCompleted := status == "completed"
-	res, err = tx.Exec(ctx, `
+	res, err := tx.Exec(ctx, `
 		UPDATE user_topic_progress
 		SET external_solved_count=$3,
 		    total_external_questions=$4,
@@ -468,4 +499,164 @@ func (r *Repository) evaluateUnlocksTx(ctx context.Context, tx pgx.Tx, userID, c
 		}
 	}
 	return nil
+}
+
+func (r *Repository) ListPlatformConnections(ctx context.Context, userID string) ([]PlatformConnection, error) {
+	if r.pool == nil {
+		return nil, fmt.Errorf("dashboard repository is not initialized")
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text, platform, platform_handle, status, connected_at, last_validated_at
+		FROM platform_connections
+		WHERE user_id=$1::uuid
+		ORDER BY platform ASC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]PlatformConnection, 0)
+	for rows.Next() {
+		var c PlatformConnection
+		if err := rows.Scan(&c.ID, &c.Platform, &c.PlatformHandle, &c.Status, &c.ConnectedAt, &c.LastValidatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *Repository) UpsertPlatformConnection(ctx context.Context, userID, platform, platformHandle string) (PlatformConnection, error) {
+	if r.pool == nil {
+		return PlatformConnection{}, fmt.Errorf("dashboard repository is not initialized")
+	}
+	var c PlatformConnection
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO platform_connections (id, user_id, platform, platform_handle, status, connected_at, last_validated_at)
+		VALUES (gen_random_uuid(), $1::uuid, $2, $3, 'connected', NOW(), NOW())
+		ON CONFLICT (user_id, platform)
+		DO UPDATE SET platform_handle=EXCLUDED.platform_handle, status='connected', last_validated_at=NOW()
+		RETURNING id::text, platform, platform_handle, status, connected_at, last_validated_at
+	`, userID, platform, platformHandle).Scan(&c.ID, &c.Platform, &c.PlatformHandle, &c.Status, &c.ConnectedAt, &c.LastValidatedAt)
+	return c, err
+}
+
+func (r *Repository) DeletePlatformConnection(ctx context.Context, userID, platform string) error {
+	if r.pool == nil {
+		return fmt.Errorf("dashboard repository is not initialized")
+	}
+	_, err := r.pool.Exec(ctx, `DELETE FROM platform_connections WHERE user_id=$1::uuid AND platform=$2`, userID, platform)
+	return err
+}
+
+func (r *Repository) GetPlatformSyncJob(ctx context.Context, userID, jobID string) (PlatformSyncJob, error) {
+	if r.pool == nil {
+		return PlatformSyncJob{}, fmt.Errorf("dashboard repository is not initialized")
+	}
+	var j PlatformSyncJob
+	err := r.pool.QueryRow(ctx, `
+		SELECT id::text, connection_id::text, status::text, trigger_source, started_at, finished_at, error_message
+		FROM platform_sync_jobs
+		WHERE id=$1::uuid AND user_id=$2::uuid
+	`, jobID, userID).Scan(&j.ID, &j.ConnectionID, &j.Status, &j.TriggerSource, &j.StartedAt, &j.FinishedAt, &j.ErrorMessage)
+	return j, err
+}
+
+func (r *Repository) GetLatestPlatformSyncJob(ctx context.Context, userID string) (PlatformSyncJob, error) {
+	if r.pool == nil {
+		return PlatformSyncJob{}, fmt.Errorf("dashboard repository is not initialized")
+	}
+	var j PlatformSyncJob
+	err := r.pool.QueryRow(ctx, `
+		SELECT id::text, connection_id::text, status::text, trigger_source, started_at, finished_at, error_message
+		FROM platform_sync_jobs
+		WHERE user_id=$1::uuid
+		ORDER BY started_at DESC NULLS LAST, id DESC
+		LIMIT 1
+	`, userID).Scan(&j.ID, &j.ConnectionID, &j.Status, &j.TriggerSource, &j.StartedAt, &j.FinishedAt, &j.ErrorMessage)
+	return j, err
+}
+
+func (r *Repository) GetPlatformSyncOverview(ctx context.Context, userID string, windowHours int, recentLimit int) (PlatformSyncOverview, error) {
+	if r.pool == nil {
+		return PlatformSyncOverview{}, fmt.Errorf("dashboard repository is not initialized")
+	}
+	if windowHours <= 0 {
+		windowHours = 24
+	}
+	if recentLimit <= 0 {
+		recentLimit = 10
+	}
+
+	overview := PlatformSyncOverview{WindowHours: windowHours, RecentJobs: make([]PlatformSyncJob, 0)}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT status::text, COUNT(*)::int
+		FROM platform_sync_jobs
+		WHERE user_id=$1::uuid
+		  AND started_at >= NOW() - ($2::int * interval '1 hour')
+		GROUP BY status
+	`, userID, windowHours)
+	if err != nil {
+		return PlatformSyncOverview{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return PlatformSyncOverview{}, err
+		}
+		overview.TotalInRange += count
+		switch status {
+		case "queued":
+			overview.Queued = count
+		case "running":
+			overview.Running = count
+		case "succeeded":
+			overview.Succeeded = count
+		case "failed":
+			overview.Failed = count
+		case "rate_limited":
+			overview.RateLimited = count
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return PlatformSyncOverview{}, err
+	}
+
+	_ = r.pool.QueryRow(ctx, `
+		SELECT COALESCE(error_message,'')
+		FROM platform_sync_jobs
+		WHERE user_id=$1::uuid
+		  AND error_message IS NOT NULL
+		ORDER BY started_at DESC NULLS LAST, id DESC
+		LIMIT 1
+	`, userID).Scan(&overview.LastError)
+
+	recentRows, err := r.pool.Query(ctx, `
+		SELECT id::text, connection_id::text, status::text, trigger_source, started_at, finished_at, error_message
+		FROM platform_sync_jobs
+		WHERE user_id=$1::uuid
+		ORDER BY started_at DESC NULLS LAST, id DESC
+		LIMIT $2
+	`, userID, recentLimit)
+	if err != nil {
+		return PlatformSyncOverview{}, err
+	}
+	defer recentRows.Close()
+
+	for recentRows.Next() {
+		var j PlatformSyncJob
+		if err := recentRows.Scan(&j.ID, &j.ConnectionID, &j.Status, &j.TriggerSource, &j.StartedAt, &j.FinishedAt, &j.ErrorMessage); err != nil {
+			return PlatformSyncOverview{}, err
+		}
+		overview.RecentJobs = append(overview.RecentJobs, j)
+	}
+	if err := recentRows.Err(); err != nil {
+		return PlatformSyncOverview{}, err
+	}
+
+	return overview, nil
 }

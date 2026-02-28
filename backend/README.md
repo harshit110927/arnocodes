@@ -207,3 +207,38 @@ curl -s -X POST http://localhost:8080/api/v1/ide/run \
 - RLS policies are still maintained as defense-in-depth and to support future anon-role/runtime-role migration.
 - Primary tenant isolation in current runtime remains explicit query scoping with `WHERE user_id = $1`.
 - To make RLS enforce per-request constraints at runtime, backend connections must use an anon/user-scoped DB role.
+
+
+## Profile sync APIs
+- `GET /api/v1/profiles/me/platform-connections`
+- `POST /api/v1/profiles/me/platform-connections`
+- `DELETE /api/v1/profiles/me/platform-connections/{platform}`
+- `POST /api/v1/platform-sync/trigger`
+- `GET /api/v1/platform-sync/jobs/{jobId}`
+- `GET /api/v1/platform-sync/overview`
+
+Supported platforms: `leetcode`, `gfg`, `codeforces`, `hackerrank`, `codechef`.
+
+See:
+- `docs/PROFILE_SYNC_AND_RATE_LIMITING.md`
+- `docs/IDE_SETUP_AND_EVALUATION_PROCESS.md`
+
+
+## Rate Limiting Deployment Note
+- Application-level IP throttling is intentionally not enabled in backend code right now.
+- To avoid NAT/shared-WiFi false positives, rate limiting should be enforced at ingress (gateway/CDN/load balancer) with environment-specific policies.
+
+## Platform Sync Reliability
+- Trigger endpoint applies 3 retries with exponential backoff (`1s`, `2s`, `4s`).
+- If all attempts fail, API returns a temporary error and the client should retry after ~5–10 seconds.
+- Use `GET /api/v1/platform-sync/overview` for audit visibility (status counts + recent jobs + latest error).
+
+## Course Content Upload (Operator Workflow)
+Current content source of truth is the database. Recommended workflow:
+1. Insert/update `topics`, `subtopics`, `learning_questions`, and `topic_prerequisites` via SQL migration or admin seed script.
+2. For IDE-linked questions, insert into `coding_questions` and `coding_question_test_cases` (mark visible vs hidden test cases in question metadata/process docs).
+3. Ensure each new subtopic/question is mapped to the correct topic IDs used in unlock DAG.
+4. Run local backend flow script and targeted DB checks before release.
+5. Promote via migration in staging -> production to keep content versioned/auditable.
+
+For a user-facing content CMS page, keep this same backend source-of-truth model and have the CMS write validated records into these same tables via authenticated admin APIs (future phase).

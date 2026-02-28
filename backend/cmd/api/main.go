@@ -39,9 +39,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
-	fmt.Println("DATABASE_URL:", os.Getenv("DATABASE_URL"))
-	fmt.Println("DB_USER:", os.Getenv("DB_USER"))
-	fmt.Println("DB_PASSWORD:", os.Getenv("DB_PASSWORD"))
 
 	cfg := config.Load()
 	ctx := context.Background()
@@ -70,7 +67,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("auth middleware init failed: %v", err)
 	}
-
 	h := handlers.NewHandler(cfg, assessmentRepo, courseRepo, assessmentCourseStatusAdapter{repo: assessmentRepo}, dashboardRepo, ideService, authMiddleware)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

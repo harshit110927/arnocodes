@@ -8,11 +8,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(apiV1BasePath+"/health", h.HealthHandler)
 
 	protect := func(fn http.HandlerFunc) http.HandlerFunc {
-		if h.authMiddleware == nil {
-			return fn
+		handler := http.Handler(fn)
+		if h.authMiddleware != nil {
+			handler = h.authMiddleware.Middleware(handler)
 		}
 		return func(w http.ResponseWriter, r *http.Request) {
-			h.authMiddleware.Middleware(fn).ServeHTTP(w, r)
+			handler.ServeHTTP(w, r)
 		}
 	}
 
@@ -38,6 +39,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc(apiV1BasePath+"/diagnostic/", protect(h.DiagnosticRouter))
 
 	mux.HandleFunc(apiV1BasePath+"/platform-sync/trigger", protect(h.PlatformSyncTriggerHandler))
+	mux.HandleFunc(apiV1BasePath+"/platform-sync/overview", protect(h.PlatformSyncOverviewHandler))
 	mux.HandleFunc(apiV1BasePath+"/platform-sync/jobs/", protect(h.PlatformSyncJobHandler))
 	mux.HandleFunc(apiV1BasePath+"/ide/submit", protect(h.IDESubmitHandler))
 	mux.HandleFunc(apiV1BasePath+"/ide/status", protect(h.IDEStatusHandler))
