@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/harshit110927/arnocodes/backend/config"
 	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 	"github.com/harshit110927/arnocodes/backend/internal/course"
@@ -34,6 +36,10 @@ func (a assessmentCourseStatusAdapter) GetUserStatus(ctx context.Context, userID
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+
 	cfg := config.Load()
 	ctx := context.Background()
 

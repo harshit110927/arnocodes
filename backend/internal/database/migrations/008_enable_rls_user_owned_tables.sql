@@ -1,3 +1,35 @@
+BEGIN;
+
+ALTER TABLE question_attempts
+ADD COLUMN IF NOT EXISTS user_id UUID;
+
+UPDATE question_attempts qa
+SET user_id = ta.user_id
+FROM test_attempts ta
+WHERE qa.attempt_id = ta.id
+  AND qa.user_id IS NULL;
+
+ALTER TABLE question_attempts
+ALTER COLUMN user_id SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints
+    WHERE constraint_name = 'fk_question_attempts_user'
+  ) THEN
+    ALTER TABLE question_attempts
+    ADD CONSTRAINT fk_question_attempts_user
+    FOREIGN KEY (user_id)
+    REFERENCES profiles(id)
+    ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_question_attempts_user_id
+ON question_attempts(user_id);
+
 ALTER TABLE IF EXISTS user_topic_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS user_subtopic_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS test_attempts ENABLE ROW LEVEL SECURITY;
