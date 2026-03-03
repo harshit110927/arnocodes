@@ -238,7 +238,7 @@ func (h *Handler) DashboardSummaryHandler(w http.ResponseWriter, r *http.Request
 	}
 	data, err := h.dashboardRepo.GetDashboard(r.Context(), userID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to fetch dashboard"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Status: "ok", Message: "dashboard summary", Data: data})
@@ -573,6 +573,10 @@ func (h *Handler) DiagnosticAnswerHandler(w http.ResponseWriter, r *http.Request
 		writeErrorCode(w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY")
 		return
 	}
+	if strings.TrimSpace(req.QuestionID) == "" {
+		writeErrorCode(w, http.StatusUnprocessableEntity, "UNPROCESSABLE_ENTITY")
+		return
+	}
 	submissionID, err := h.assessmentService.SubmitAnswer(r.Context(), userID, diagnosticAttemptIDFromPath(r.URL.Path), assessment.AnswerData{
 		QuestionID:     req.QuestionID,
 		QuestionType:   req.QuestionType,
@@ -760,7 +764,7 @@ func (h *Handler) IDESubmitHandler(w http.ResponseWriter, r *http.Request) {
 			writeErrorCode(w, http.StatusNotFound, "NOT_FOUND")
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: "failed to submit code"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Status: "error", Message: err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusAccepted, APIResponse{Status: "ok", Message: "submission queued", Data: map[string]string{"submission_id": id}})

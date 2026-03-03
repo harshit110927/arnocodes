@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/harshit110927/arnocodes/backend/internal/assessment"
 )
 
 type contextKey string
@@ -26,8 +29,11 @@ type JWKSAuthMiddleware struct {
 	audience string
 	client   *http.Client
 
+	// Added repo to allow auto-provisioning of profiles
+	repo *assessment.Repository
+
 	mu         sync.RWMutex
-	cachedKeys map[string]*rsa.PublicKey
+	cachedKeys map[string]interface{}
 	cachedAt   time.Time
 }
 
@@ -38,13 +44,16 @@ type jwksResponse struct {
 type jwkKey struct {
 	Kid string `json:"kid"`
 	Kty string `json:"kty"`
-	N   string `json:"n"`
-	E   string `json:"e"`
+	N   string `json:"n"` // RSA
+	E   string `json:"e"` // RSA
+	X   string `json:"x"` // EC
+	Y   string `json:"y"` // EC
+	Crv string `json:"crv"`
 	Alg string `json:"alg"`
 	Use string `json:"use"`
 }
 
-func NewJWKSAuthMiddleware(supabaseURL, audience string) (*JWKSAuthMiddleware, error) {
+func NewJWKSAuthMiddleware(supabaseURL, audience string, repo *assessment.Repository) (*JWKSAuthMiddleware, error) {
 	supabaseURL = strings.TrimSuffix(strings.TrimSpace(supabaseURL), "/")
 	if supabaseURL == "" {
 		return nil, fmt.Errorf("SUPABASE_URL is required")
@@ -57,7 +66,8 @@ func NewJWKSAuthMiddleware(supabaseURL, audience string) (*JWKSAuthMiddleware, e
 		issuer:     supabaseURL + "/auth/v1",
 		audience:   audience,
 		client:     &http.Client{Timeout: 5 * time.Second},
-		cachedKeys: map[string]*rsa.PublicKey{},
+		cachedKeys: map[string]interface{}{},
+		repo:       repo, // Correctly assigning the repo here
 	}, nil
 }
 
@@ -96,10 +106,13 @@ func (m *JWKSAuthMiddleware) Middleware(next http.Handler) http.Handler {
 		claims := jwt.RegisteredClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, &claims, m.keyFunc,
 			jwt.WithIssuer(m.issuer),
-			// Explicit audience validation prevents cross-project token reuse.
 			jwt.WithAudience(m.audience),
-			jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
+			jwt.WithValidMethods([]string{
+				jwt.SigningMethodRS256.Alg(),
+				jwt.SigningMethodES256.Alg(),
+			}),
 		)
+
 		if err != nil || token == nil || !token.Valid {
 			writeUnauthorized(w)
 			return
@@ -109,13 +122,27 @@ func (m *JWKSAuthMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// --- AUTO-PROVISION PROFILE ---
+		// This ensures the userID exists in the 'profiles' table before the request continues.
+		// This prevents foreign key violations in downstream diagnostic/test logic.
+		err = m.repo.EnsureProfileExists(r.Context(), claims.Subject)
+		if err != nil {
+			// We log the error but allow the request to proceed; 
+			// if the DB insert truly fails, downstream logic will catch it.
+			fmt.Printf("Auth Hook: could not ensure profile for %s: %v\n", claims.Subject, err)
+		}
+
 		next.ServeHTTP(w, r.WithContext(WithUserID(r.Context(), claims.Subject)))
 	})
 }
 
 func (m *JWKSAuthMiddleware) keyFunc(token *jwt.Token) (interface{}, error) {
-	// Enforce RS256 explicitly to prevent algorithm confusion regressions.
-	if token.Method == nil || token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
+	if token.Method == nil {
+		return nil, errors.New("missing signing method")
+	}
+
+	alg := token.Method.Alg()
+	if alg != jwt.SigningMethodRS256.Alg() && alg != jwt.SigningMethodES256.Alg() {
 		return nil, errors.New("unexpected signing method")
 	}
 
@@ -123,6 +150,7 @@ func (m *JWKSAuthMiddleware) keyFunc(token *jwt.Token) (interface{}, error) {
 	if kid == "" {
 		return nil, errors.New("missing kid")
 	}
+
 	key, err := m.getKey(kid)
 	if err != nil {
 		return nil, err
@@ -130,7 +158,7 @@ func (m *JWKSAuthMiddleware) keyFunc(token *jwt.Token) (interface{}, error) {
 	return key, nil
 }
 
-func (m *JWKSAuthMiddleware) getKey(kid string) (*rsa.PublicKey, error) {
+func (m *JWKSAuthMiddleware) getKey(kid string) (interface{}, error) {
 	m.mu.RLock()
 	cachedKey, hadCachedKey := m.cachedKeys[kid]
 	cacheFresh := time.Since(m.cachedAt) < 15*time.Minute
@@ -141,15 +169,8 @@ func (m *JWKSAuthMiddleware) getKey(kid string) (*rsa.PublicKey, error) {
 	}
 
 	if err := m.refreshKeys(); err != nil {
-		// On transient JWKS fetch failures, continue using previously cached key.
 		if hadCachedKey {
 			return cachedKey, nil
-		}
-		m.mu.RLock()
-		fallbackKey, ok := m.cachedKeys[kid]
-		m.mu.RUnlock()
-		if ok {
-			return fallbackKey, nil
 		}
 		return nil, err
 	}
@@ -169,6 +190,7 @@ func (m *JWKSAuthMiddleware) refreshKeys() error {
 		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("jwks http status %d", resp.StatusCode)
 	}
@@ -178,17 +200,29 @@ func (m *JWKSAuthMiddleware) refreshKeys() error {
 		return err
 	}
 
-	keys := make(map[string]*rsa.PublicKey)
+	keys := make(map[string]interface{})
+
 	for _, k := range jwks.Keys {
-		if k.Kty != "RSA" || k.Kid == "" || k.N == "" || k.E == "" {
-			continue
+		switch k.Kty {
+		case "RSA":
+			if k.N == "" || k.E == "" {
+				continue
+			}
+			pub, err := parseRSAPublicKey(k.N, k.E)
+			if err == nil {
+				keys[k.Kid] = pub
+			}
+		case "EC":
+			if k.X == "" || k.Y == "" || k.Crv != "P-256" {
+				continue
+			}
+			pub, err := parseECPublicKey(k.X, k.Y)
+			if err == nil {
+				keys[k.Kid] = pub
+			}
 		}
-		pub, err := parseRSAPublicKey(k.N, k.E)
-		if err != nil {
-			continue
-		}
-		keys[k.Kid] = pub
 	}
+
 	if len(keys) == 0 {
 		return fmt.Errorf("no valid jwks keys")
 	}
@@ -197,6 +231,7 @@ func (m *JWKSAuthMiddleware) refreshKeys() error {
 	m.cachedKeys = keys
 	m.cachedAt = time.Now()
 	m.mu.Unlock()
+
 	return nil
 }
 
@@ -209,13 +244,28 @@ func parseRSAPublicKey(n, e string) (*rsa.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(eBytes) == 0 {
-		return nil, fmt.Errorf("invalid exponent")
-	}
 	exponent := 0
 	for _, b := range eBytes {
 		exponent = exponent<<8 + int(b)
 	}
-	pub := &rsa.PublicKey{N: new(big.Int).SetBytes(nBytes), E: exponent}
-	return pub, nil
+	return &rsa.PublicKey{
+		N: new(big.Int).SetBytes(nBytes),
+		E: exponent,
+	}, nil
+}
+
+func parseECPublicKey(xStr, yStr string) (*ecdsa.PublicKey, error) {
+	xBytes, err := base64.RawURLEncoding.DecodeString(xStr)
+	if err != nil {
+		return nil, err
+	}
+	yBytes, err := base64.RawURLEncoding.DecodeString(yStr)
+	if err != nil {
+		return nil, err
+	}
+	return &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     new(big.Int).SetBytes(xBytes),
+		Y:     new(big.Int).SetBytes(yBytes),
+	}, nil
 }

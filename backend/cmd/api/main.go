@@ -63,7 +63,7 @@ func main() {
 	ideRepo := ide.NewRepository(db.Pool())
 	ideService := ide.NewService(ideRepo, ide.NewDockerEvaluator(), learningActivityRepo)
 
-	authMiddleware, err := middleware.NewJWKSAuthMiddleware(cfg.SupabaseURL, cfg.SupabaseAudience)
+	authMiddleware, err := middleware.NewJWKSAuthMiddleware(cfg.SupabaseURL, cfg.SupabaseAudience, assessmentRepo)
 	if err != nil {
 		log.Fatalf("auth middleware init failed: %v", err)
 	}

@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,15 +110,36 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 	if r.pool == nil {
 		return DashboardData{}, fmt.Errorf("dashboard repository is not initialized")
 	}
-	out := DashboardData{}
 
-	_ = r.pool.QueryRow(ctx, `
+	out := DashboardData{
+		Heatmap:        make([]HeatmapPoint, 0),
+		RecentActivity: make([]ActivityItem, 0),
+		TopicMastery:   make([]TopicMastery, 0),
+		WeakTopics:     make([]TopicMastery, 0),
+		UpcomingEvents: make([]UpcomingEvent, 0),
+	}
+
+	err := r.pool.QueryRow(ctx, `
 		SELECT COALESCE(streak_count,0), COALESCE(questions_solved,0), COALESCE(mastery_score,0), COALESCE(topics_completed,0), last_activity_at
 		FROM dashboard_daily_snapshots
 		WHERE user_id=$1::uuid
 		ORDER BY snapshot_date DESC
 		LIMIT 1
 	`, userID).Scan(&out.Summary.StreakCount, &out.Summary.QuestionsSolved, &out.Summary.MasteryScore, &out.Summary.TopicsCompleted, &out.Summary.LastActivityAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			out.Summary = Summary{
+				StreakCount:     0,
+				QuestionsSolved: 0,
+				MasteryScore:    0.0,
+				TopicsCompleted: 0,
+				LastActivityAt:  nil,
+			}
+		} else {
+			return DashboardData{}, err
+		}
+	}
 
 	hRows, err := r.pool.Query(ctx, `
 		WITH diagnostic_days AS (
@@ -126,8 +148,8 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 			WHERE user_id=$1::uuid AND source='diagnostic'
 		)
 		SELECT da.activity_date::timestamp,
-		       da.questions_solved,
-		       (dd.day IS NOT NULL) AS has_diagnostic
+			   da.questions_solved,
+			   (dd.day IS NOT NULL) AS has_diagnostic
 		FROM daily_activity da
 		LEFT JOIN diagnostic_days dd ON dd.day = da.activity_date
 		WHERE da.user_id=$1::uuid
@@ -137,35 +159,35 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 	if err != nil {
 		return DashboardData{}, err
 	}
+	defer hRows.Close()
+
 	for hRows.Next() {
 		var p HeatmapPoint
 		if err := hRows.Scan(&p.Date, &p.QuestionsSolved, &p.HasDiagnostic); err != nil {
-			hRows.Close()
 			return DashboardData{}, err
 		}
 		out.Heatmap = append(out.Heatmap, p)
 	}
-	hRows.Close()
 
 	aRows, err := r.pool.Query(ctx, `
-		SELECT source, title, topic_id::text, difficulty, link, solved_at
+		SELECT source, title, topic_id::text, COALESCE(difficulty, ''), COALESCE(link, ''), solved_at
 		FROM user_activity_feed
 		WHERE user_id=$1::uuid
 		ORDER BY solved_at DESC
 		LIMIT 10
 	`, userID)
 	if err != nil {
-		return DashboardData{}, err
+		return DashboardData{}, fmt.Errorf("failed to fetch recent activity: %w", err)
 	}
+	defer aRows.Close()
+
 	for aRows.Next() {
 		var a ActivityItem
 		if err := aRows.Scan(&a.Source, &a.Title, &a.TopicID, &a.Difficulty, &a.Link, &a.SolvedAt); err != nil {
-			aRows.Close()
-			return DashboardData{}, err
+			return DashboardData{}, fmt.Errorf("failed to scan activity item: %w", err)
 		}
 		out.RecentActivity = append(out.RecentActivity, a)
 	}
-	aRows.Close()
 
 	mRows, err := r.pool.Query(ctx, `
 		SELECT utp.topic_id::text, t.name, utp.status::text, COALESCE(utp.mastery_score,0)
@@ -179,10 +201,11 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 	if err != nil {
 		return DashboardData{}, err
 	}
+	defer mRows.Close()
+
 	for mRows.Next() {
 		var m TopicMastery
 		if err := mRows.Scan(&m.TopicID, &m.TopicName, &m.Status, &m.MasteryScore); err != nil {
-			mRows.Close()
 			return DashboardData{}, err
 		}
 		out.TopicMastery = append(out.TopicMastery, m)
@@ -190,7 +213,6 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 			out.WeakTopics = append(out.WeakTopics, m)
 		}
 	}
-	mRows.Close()
 
 	eRows, err := r.pool.Query(ctx, `
 		SELECT id::text, name, phase::text, start_date::timestamp, end_date::timestamp
@@ -202,15 +224,15 @@ func (r *Repository) GetDashboard(ctx context.Context, userID string) (Dashboard
 	if err != nil {
 		return DashboardData{}, err
 	}
+	defer eRows.Close()
+
 	for eRows.Next() {
 		var e UpcomingEvent
 		if err := eRows.Scan(&e.ID, &e.Name, &e.Phase, &e.StartDate, &e.EndDate); err != nil {
-			eRows.Close()
 			return DashboardData{}, err
 		}
 		out.UpcomingEvents = append(out.UpcomingEvents, e)
 	}
-	eRows.Close()
 
 	return out, nil
 }
@@ -355,8 +377,8 @@ func (r *Repository) RecordExternalSolve(ctx context.Context, in ExternalSolveIn
 	res, err := tx.Exec(ctx, `
 		UPDATE dashboard_daily_snapshots
 		SET questions_solved = questions_solved + 1,
-		    last_activity_at = GREATEST(last_activity_at, $3),
-		    computed_at = NOW()
+			last_activity_at = GREATEST(last_activity_at, $3),
+			computed_at = NOW()
 		WHERE user_id=$1::uuid AND snapshot_date=$2::date
 	`, in.UserID, today, in.SolvedAt)
 	if err != nil {
@@ -410,13 +432,13 @@ func (r *Repository) RecordExternalSolve(ctx context.Context, in ExternalSolveIn
 	}
 
 	prevCompleted := status == "completed"
-	res, err := tx.Exec(ctx, `
+	res, err = tx.Exec(ctx, `
 		UPDATE user_topic_progress
 		SET external_solved_count=$3,
-		    total_external_questions=$4,
-		    mastery_score=$5,
-		    status = CASE WHEN $5 >= 80 THEN 'completed'::learning_progress_status ELSE status END,
-		    completed_at = CASE WHEN $5 >= 80 AND status != 'completed'::learning_progress_status THEN NOW() ELSE completed_at END
+			total_external_questions=$4,
+			mastery_score=$5,
+			status = CASE WHEN $5 >= 80 THEN 'completed'::learning_progress_status ELSE status END,
+			completed_at = CASE WHEN $5 >= 80 AND status != 'completed'::learning_progress_status THEN NOW() ELSE completed_at END
 		WHERE user_id=$1::uuid AND topic_id=$2::uuid
 	`, in.UserID, *in.TopicID, externalSolved, totalExternal, mastery)
 	if err != nil {
@@ -545,8 +567,36 @@ func (r *Repository) DeletePlatformConnection(ctx context.Context, userID, platf
 	if r.pool == nil {
 		return fmt.Errorf("dashboard repository is not initialized")
 	}
-	_, err := r.pool.Exec(ctx, `DELETE FROM platform_connections WHERE user_id=$1::uuid AND platform=$2`, userID, platform)
-	return err
+
+	// Start a transaction to ensure both deletes happen safely
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Delete dependent sync jobs first to prevent foreign key violations
+	_, err = tx.Exec(ctx, `
+		DELETE FROM platform_sync_jobs 
+		WHERE connection_id IN (
+			SELECT id FROM platform_connections WHERE user_id=$1::uuid AND platform=$2
+		)
+	`, userID, platform)
+	if err != nil {
+		return fmt.Errorf("failed to delete dependent sync jobs: %w", err)
+	}
+
+	// 2. Now it is safe to delete the platform connection
+	_, err = tx.Exec(ctx, `
+		DELETE FROM platform_connections 
+		WHERE user_id=$1::uuid AND platform=$2
+	`, userID, platform)
+	if err != nil {
+		return fmt.Errorf("failed to delete connection: %w", err)
+	}
+
+	// Commit the transaction to save the changes
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) GetPlatformSyncJob(ctx context.Context, userID, jobID string) (PlatformSyncJob, error) {

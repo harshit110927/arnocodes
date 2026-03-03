@@ -7,9 +7,10 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
-require github.com/golang-jwt/jwt/v5 v5.2.1
+require github.com/golang-jwt/jwt/v5 v5.3.1
 
 require (
+	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/puddle/v2 v2.0.0 // indirect
