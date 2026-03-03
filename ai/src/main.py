@@ -1,82 +1,65 @@
-from flask import Flask, jsonify, request
-from dotenv import load_dotenv
 import os
 
-# Load environment variables
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+
+from errors import AIServiceError, ProviderError
+from providers.gemini import GeminiProvider
+from service import AIOrchestrator
+
 load_dotenv()
 
 app = Flask(__name__)
+orchestrator = AIOrchestrator(provider=GeminiProvider())
 
-# Placeholder for RAG service
-class RAGService:
-    """
-    Placeholder for RAG (Retrieval-Augmented Generation) service.
-    This will be implemented with actual vector database and LLM integration.
-    """
-    
-    def __init__(self):
-        self.initialized = False
-        print("RAG Service placeholder initialized")
-    
-    def query(self, query_text: str) -> dict:
-        """
-        Placeholder query method.
-        In production, this would:
-        1. Convert query to embeddings
-        2. Search vector database
-        3. Retrieve relevant context
-        4. Generate response using LLM
-        """
-        return {
-            "query": query_text,
-            "response": "This is a placeholder response from RAG service",
-            "status": "placeholder"
-        }
-    
-    def add_document(self, document: str, metadata: dict = None) -> dict:
-        """
-        Placeholder for adding documents to the vector database.
-        """
-        return {
-            "status": "placeholder",
-            "message": "Document indexing not yet implemented"
-        }
-
-# Initialize RAG service
-rag_service = RAGService()
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "service": "ai-rag"
-    })
+    return jsonify({"status": "healthy", "service": "ai-service"})
+
 
 @app.route('/query', methods=['POST'])
 def query():
-    """Query endpoint for RAG service"""
-    data = request.get_json()
-    query_text = data.get('query', '')
-    
-    if not query_text:
-        return jsonify({"error": "Query text is required"}), 400
-    
-    result = rag_service.query(query_text)
+    data = request.get_json(silent=True) or {}
+
+    user_id = data.get('userId')
+    mode = data.get('mode', 'chatbot')
+    text = data.get('text') or data.get('query')
+
+    result = orchestrator.process(user_id=user_id, mode=mode, text=text)
     return jsonify(result)
+
 
 @app.route('/index', methods=['POST'])
 def index_document():
-    """Index document endpoint"""
-    data = request.get_json()
-    document = data.get('document', '')
-    metadata = data.get('metadata', {})
-    
-    if not document:
-        return jsonify({"error": "Document text is required"}), 400
-    
-    result = rag_service.add_document(document, metadata)
-    return jsonify(result)
+    # Deliberately left as no-op placeholder; integration should be implemented by
+    # consumers outside this module if indexing is required.
+    return jsonify({
+        "status": "not_implemented",
+        "message": "Document indexing is not part of this AI mode service."
+    }), 501
+
+
+@app.errorhandler(AIServiceError)
+def handle_ai_error(err: AIServiceError):
+    return jsonify({
+        "error": {
+            "code": err.code,
+            "message": err.message,
+        }
+    }), err.status_code
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(_err: Exception):
+    fallback = ProviderError("Internal AI processing failure.")
+    return jsonify({
+        "error": {
+            "code": fallback.code,
+            "message": fallback.message,
+        }
+    }), 500
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
