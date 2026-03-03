@@ -1,52 +1,103 @@
 # AI Service (Python)
 
-## Description
-AI service with placeholder RAG (Retrieval-Augmented Generation) implementation.
+Production-safe AI orchestration service for ArnoCodes, implemented fully inside `/ai`.
 
-## Structure
-- `src/main.py` - Flask application with RAG service endpoints
+## Implemented Modes
 
-## Setup
+### 1) Chatbot Mode (`mode=chatbot`)
+- Model: `gemini-2.5-flash`
+- Per-user limit: **3 requests/hour**
+- Behavior:
+  - concise, direct answers
+  - no follow-up questions
+  - no conversational fluff
+  - fallback text when context is insufficient
+- Enforced output token cap via config.
 
-### Virtual Environment
-```bash
-# Create virtual environment
-python3 -m venv venv
+### 2) Code Helper Mode (`mode=code_helper`)
+- Model: `gemini-2.5-flash`
+- Per-user limit: **5 requests/day**
+- Strict required structure:
+  - Problem Understanding
+  - Intuition
+  - Brute Force Approach
+  - Optimization Path
+  - Final Optimal Solution
+  - Interview Simulation
+- Enforced output token cap via config.
 
-# Activate virtual environment
-source venv/bin/activate  # On Linux/Mac
-# OR
-venv\Scripts\activate  # On Windows
+## Global Controls
+- Global daily cap for all AI calls (`AI_GLOBAL_MAX_PER_DAY`, default `300`)
+- Structured errors for:
+  - rate limit exceeded
+  - provider failure
+  - invalid input
+  - timeout
+- Logs include:
+  - `userId`
+  - `mode`
+  - timestamp
+  - input/output token estimates
+  - rate-limit hits
 
-# Install dependencies
-pip install -r requirements.txt
+## Architecture
+
+```
+ai/src/
+├── main.py                 # Flask routes + error handlers
+├── service.py              # AI orchestration flow
+├── mode_handler.py         # Per-mode limits and output token controls
+├── rate_limiter.py         # Sliding-window per-user and global limiter
+├── prompt_builder.py       # System instructions by mode
+├── response_formatter.py   # Strict shaping per mode
+├── logging_wrapper.py      # Structured JSON logging
+├── errors.py               # Internal service error model
+├── config.py               # Environment-backed config
+└── providers/
+    ├── base.py             # LLMProvider interface
+    └── gemini.py           # Gemini 2.5 Flash adapter
 ```
 
-## Running Locally
+Provider abstraction interface:
+- `LLMProvider.generate(prompt, config)`
 
-```bash
-# Make sure virtual environment is activated
-source venv/bin/activate
+This keeps business logic decoupled from Gemini and swappable for future providers.
 
-# Run the service
-python src/main.py
+## API
+
+### Health
+- `GET /health`
+
+### Query
+- `POST /query`
+- Request body:
+```json
+{
+  "userId": "user-123",
+  "mode": "chatbot",
+  "text": "Explain memoization briefly"
+}
 ```
+- `mode` values: `chatbot` | `code_helper`
+- Backwards compatibility: `query` field is also accepted when `text` is omitted.
+
+### Index
+- `POST /index`
+- Returns `501` not implemented placeholder intentionally.
 
 ## Environment Variables
-Copy `.env.example` to `.env` and update the values:
-- `PORT` - Service port (default: 5000)
-- `OPENAI_API_KEY` - OpenAI API key for LLM integration
-- `ENVIRONMENT` - Environment name (development/production)
 
-## API Endpoints
-- `GET /health` - Health check endpoint
-- `POST /query` - Query RAG service with a question
-- `POST /index` - Index a document into the vector database
+Copy `.env.example` to `.env` and set:
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (default `gemini-2.5-flash`)
+- rate/token controls as needed.
 
-## Future Enhancements
-This is a placeholder implementation. Future improvements include:
-- Actual vector database integration (ChromaDB, Pinecone, etc.)
-- LLM integration (OpenAI, Anthropic, etc.)
-- Document processing and chunking
-- Embedding generation
-- Retrieval logic
+## Run
+
+```bash
+cd ai
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python src/main.py
+```
