@@ -13,11 +13,31 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+//var ErrNotFound = errors.New("resource not found")
+
 type Repository struct {
 	pool *pgxpool.Pool
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
+
+// EnsureProfileExists creates a shell profile for a authenticated user if it doesn't exist.
+// This prevents foreign key violations when creating test attempts or activity logs.
+func (r *Repository) EnsureProfileExists(ctx context.Context, userID string) error {
+	if r.pool == nil {
+		return fmt.Errorf("assessment repository is not initialized")
+	}
+	const q = `
+		INSERT INTO profiles (id, full_name)
+		VALUES ($1::uuid, $2)
+		ON CONFLICT (id) DO NOTHING
+	`
+	_, err := r.pool.Exec(ctx, q, userID, "New User")
+	if err != nil {
+		return fmt.Errorf("ensure profile exists: %w", err)
+	}
+	return nil
+}
 
 type UserStatus struct {
 	DiagnosticCompleted bool `json:"diagnostic_completed"`
@@ -106,13 +126,13 @@ func (r *Repository) CanStartDiagnostic(userID string) (bool, error) {
 		return false, fmt.Errorf("assessment repository is not initialized")
 	}
 	const q = `
-	SELECT COUNT(*)
-	FROM test_attempts ta
-	JOIN tests t ON t.id = ta.test_id
-	WHERE ta.user_id = $1::uuid
-	  AND t.type = 'diagnostic'
-	  AND ta.started_at >= NOW() - INTERVAL '48 hours'
-	`
+    SELECT COUNT(*)
+    FROM test_attempts ta
+    JOIN tests t ON t.id = ta.test_id
+    WHERE ta.user_id = $1::uuid
+      AND t.type = 'diagnostic'
+      AND ta.started_at >= NOW() - INTERVAL '48 hours'
+    `
 	var count int
 	if err := r.pool.QueryRow(context.Background(), q, userID).Scan(&count); err != nil {
 		return false, fmt.Errorf("query recent diagnostic attempts: %w", err)
@@ -137,20 +157,20 @@ func (r *Repository) CreateDiagnosticAttempt(ctx context.Context, userID string,
 
 	var attemptID string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO test_attempts (id, user_id, test_id, score, status, started_at, expires_at, submitted_at, evaluation_version)
-		VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 0, 'in_progress', NOW(), NOW() + INTERVAL '2 hours', NULL, 'v1')
-		RETURNING id::text
-	`, userID, diagnosticTestID).Scan(&attemptID); err != nil {
+        INSERT INTO test_attempts (id, user_id, test_id, score, status, started_at, expires_at, submitted_at, evaluation_version)
+        VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 0, 'in_progress', NOW(), NOW() + INTERVAL '2 hours', NULL, 'v1')
+        RETURNING id::text
+    `, userID, diagnosticTestID).Scan(&attemptID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			if err := tx.QueryRow(ctx, `
-				SELECT id::text
-				FROM test_attempts
-				WHERE user_id = $1::uuid
-				  AND test_id = $2::uuid
-				  AND status IN ('started','in_progress')
-				LIMIT 1
-			`, userID, diagnosticTestID).Scan(&attemptID); err != nil {
+                SELECT id::text
+                FROM test_attempts
+                WHERE user_id = $1::uuid
+                  AND test_id = $2::uuid
+                  AND status IN ('started','in_progress')
+                LIMIT 1
+            `, userID, diagnosticTestID).Scan(&attemptID); err != nil {
 				return "", fmt.Errorf("load existing active attempt: %w", err)
 			}
 			return attemptID, nil
@@ -189,9 +209,9 @@ func (r *Repository) CreateDiagnosticAttempt(ctx context.Context, userID string,
 			allotted = 1800
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO diagnostic_attempt_questions (attempt_id, question_id, topic_id, order_index, question_type, allotted_seconds)
-			VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6)
-		`, attemptID, q.ID, topicID, i+1, q.Type, allotted); err != nil {
+            INSERT INTO diagnostic_attempt_questions (attempt_id, question_id, topic_id, order_index, question_type, allotted_seconds)
+            VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6)
+        `, attemptID, q.ID, topicID, i+1, q.Type, allotted); err != nil {
 			return "", fmt.Errorf("insert attempt question map: %w", err)
 		}
 	}
@@ -216,11 +236,11 @@ func validateAttemptLocked(ctx context.Context, tx pgx.Tx, attemptID string) err
 	}
 	if time.Now().After(expiresAt) {
 		res, err := tx.Exec(ctx, `
-			UPDATE test_attempts
-			SET status='expired'
-			WHERE id=$1::uuid
-			  AND status='in_progress'
-		`, attemptID)
+            UPDATE test_attempts
+            SET status='expired'
+            WHERE id=$1::uuid
+              AND status='in_progress'
+        `, attemptID)
 		if err != nil {
 			return fmt.Errorf("mark attempt expired: %w", err)
 		}
@@ -247,15 +267,15 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 	}
 
 	const q = `
-	SELECT daq.question_id::text, daq.question_type, qs.content, qs.options, daq.order_index, daq.topic_id::text, daq.allotted_seconds
-	FROM diagnostic_attempt_questions daq
-	JOIN questions qs ON qs.id = daq.question_id
-	WHERE daq.attempt_id = $1::uuid
-	  AND daq.order_index > $2
-	  AND daq.answered_at IS NULL
-	ORDER BY daq.order_index ASC
-	LIMIT 1
-	`
+    SELECT daq.question_id::text, daq.question_type, qs.content, qs.options, daq.order_index, daq.topic_id::text, daq.allotted_seconds
+    FROM diagnostic_attempt_questions daq
+    JOIN questions qs ON qs.id = daq.question_id
+    WHERE daq.attempt_id = $1::uuid
+      AND daq.order_index > $2
+      AND daq.answered_at IS NULL
+    ORDER BY daq.order_index ASC
+    LIMIT 1
+    `
 	var out DiagnosticQuestion
 	if err := tx.QueryRow(ctx, q, attemptID, lastOrderIndex).Scan(&out.QuestionID, &out.QuestionType, &out.Content, &out.Options, &out.OrderIndex, &out.TopicID, &out.AllottedSecs); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -271,6 +291,9 @@ func (r *Repository) GetNextDiagnosticQuestion(ctx context.Context, attemptID st
 }
 
 func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID string, selectedOption int) error {
+	if strings.TrimSpace(questionID) == "" {
+        return fmt.Errorf("question_id is required") // validation error
+    }
 	if r.pool == nil {
 		return fmt.Errorf("assessment repository is not initialized")
 	}
@@ -290,19 +313,19 @@ func (r *Repository) SubmitMCQAnswer(ctx context.Context, attemptID, questionID 
 	}
 	isCorrect := selectedOption == correctOption
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO question_attempts (attempt_id, question_id, selected_option, time_taken_seconds, is_correct, state, answered_at, is_marked_for_review)
-		VALUES ($1::uuid,$2::uuid,$3,0,$4,'answered',NOW(),FALSE)
-		ON CONFLICT (attempt_id, question_id)
-		DO UPDATE SET selected_option=EXCLUDED.selected_option,is_correct=EXCLUDED.is_correct,state='answered',answered_at=NOW()
-	`, attemptID, questionID, selectedOption, isCorrect); err != nil {
+        INSERT INTO question_attempts (attempt_id, question_id, selected_option, time_taken_seconds, is_correct, state, answered_at, is_marked_for_review)
+        VALUES ($1::uuid,$2::uuid,$3,0,$4,'answered',NOW(),FALSE)
+        ON CONFLICT (attempt_id, question_id)
+        DO UPDATE SET selected_option=EXCLUDED.selected_option,is_correct=EXCLUDED.is_correct,state='answered',answered_at=NOW()
+    `, attemptID, questionID, selectedOption, isCorrect); err != nil {
 		return fmt.Errorf("upsert question attempt: %w", err)
 	}
 
 	res, err := tx.Exec(ctx, `
-		UPDATE diagnostic_attempt_questions
-		SET answered_at=NOW()
-		WHERE attempt_id=$1::uuid AND question_id=$2::uuid AND answered_at IS NULL
-	`, attemptID, questionID)
+        UPDATE diagnostic_attempt_questions
+        SET answered_at=NOW()
+        WHERE attempt_id=$1::uuid AND question_id=$2::uuid AND answered_at IS NULL
+    `, attemptID, questionID)
 	if err != nil {
 		return fmt.Errorf("mark answered: %w", err)
 	}
@@ -329,19 +352,19 @@ func (r *Repository) SaveCodingSubmission(ctx context.Context, attemptID, questi
 
 	var submissionID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO coding_submissions (id, attempt_id, question_id, user_id, code, language, evaluation_status, score, created_at, evaluated_at)
-		VALUES (gen_random_uuid(),$1::uuid,$2::uuid,$3::uuid,$4,$5,'pending',NULL,NOW(),NULL)
-		RETURNING id::text
-	`, attemptID, questionID, userID, code, language).Scan(&submissionID)
+        INSERT INTO coding_submissions (id, attempt_id, question_id, user_id, code, language, evaluation_status, score, created_at, evaluated_at)
+        VALUES (gen_random_uuid(),$1::uuid,$2::uuid,$3::uuid,$4,$5,'pending',NULL,NOW(),NULL)
+        RETURNING id::text
+    `, attemptID, questionID, userID, code, language).Scan(&submissionID)
 	if err != nil {
 		return "", fmt.Errorf("insert coding submission: %w", err)
 	}
 
 	res, err := tx.Exec(ctx, `
-		UPDATE diagnostic_attempt_questions
-		SET answered_at=NOW()
-		WHERE attempt_id=$1::uuid AND question_id=$2::uuid AND answered_at IS NULL
-	`, attemptID, questionID)
+        UPDATE diagnostic_attempt_questions
+        SET answered_at=NOW()
+        WHERE attempt_id=$1::uuid AND question_id=$2::uuid AND answered_at IS NULL
+    `, attemptID, questionID)
 	if err != nil {
 		return "", fmt.Errorf("mark coding answered: %w", err)
 	}
@@ -366,13 +389,13 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	rows, err := tx.Query(ctx, `
-		SELECT id::text
-		FROM coding_submissions
-		WHERE evaluation_status='pending'
-		ORDER BY created_at ASC
-		FOR UPDATE SKIP LOCKED
-		LIMIT $1
-	`, limit)
+        SELECT id::text
+        FROM coding_submissions
+        WHERE evaluation_status='pending'
+        ORDER BY created_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT $1
+    `, limit)
 	if err != nil {
 		return nil, fmt.Errorf("select pending coding submissions: %w", err)
 	}
@@ -396,11 +419,11 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	}
 
 	res, err := tx.Exec(ctx, `
-		UPDATE coding_submissions
-		SET evaluation_status='processing'
-		WHERE id = ANY($1::uuid[])
-		  AND evaluation_status='pending'
-	`, ids)
+        UPDATE coding_submissions
+        SET evaluation_status='processing'
+        WHERE id = ANY($1::uuid[])
+          AND evaluation_status='pending'
+    `, ids)
 	if err != nil {
 		return nil, fmt.Errorf("mark submissions processing: %w", err)
 	}
@@ -409,11 +432,11 @@ func (r *Repository) GetPendingCodingSubmissions(ctx context.Context, limit int)
 	}
 
 	dataRows, err := tx.Query(ctx, `
-		SELECT id::text, attempt_id::text, question_id::text, user_id::text, code, language, evaluation_status, score
-		FROM coding_submissions
-		WHERE id = ANY($1::uuid[])
-		ORDER BY created_at ASC
-	`, ids)
+        SELECT id::text, attempt_id::text, question_id::text, user_id::text, code, language, evaluation_status, score
+        FROM coding_submissions
+        WHERE id = ANY($1::uuid[])
+        ORDER BY created_at ASC
+    `, ids)
 	if err != nil {
 		return nil, fmt.Errorf("load claimed submissions: %w", err)
 	}
@@ -439,10 +462,10 @@ func (r *Repository) UpdateCodingSubmissionResult(ctx context.Context, submissio
 		return fmt.Errorf("assessment repository is not initialized")
 	}
 	res, err := r.pool.Exec(ctx, `
-		UPDATE coding_submissions
-		SET evaluation_status=$2, score=$3, evaluated_at=NOW()
-		WHERE id=$1::uuid AND evaluation_status='processing'
-	`, submissionID, status, score)
+        UPDATE coding_submissions
+        SET evaluation_status=$2, score=$3, evaluated_at=NOW()
+        WHERE id=$1::uuid AND evaluation_status='processing'
+    `, submissionID, status, score)
 	if err != nil {
 		return err
 	}
@@ -479,11 +502,11 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	}
 	if time.Now().After(expiresAt) {
 		res, updErr := tx.Exec(ctx, `
-			UPDATE test_attempts
-			SET status='expired'
-			WHERE id=$1::uuid
-			  AND status='in_progress'
-		`, attemptID)
+            UPDATE test_attempts
+            SET status='expired'
+            WHERE id=$1::uuid
+              AND status='in_progress'
+        `, attemptID)
 		if updErr != nil {
 			return fmt.Errorf("mark attempt expired: %w", updErr)
 		}
@@ -494,84 +517,84 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO diagnostic_topic_results (attempt_id, topic_id, score, max_score, percentage, passed, created_at)
-		SELECT daq.attempt_id,
-		       daq.topic_id,
-		       COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
-		         + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0) AS score,
-		       GREATEST(COALESCE(SUM(q.marks),0),1) AS max_score,
-		       ( (
-		          COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
-		          + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
-		         )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0 AS percentage,
-		       (((
-		          COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
-		          + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
-		         )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0) >= 80.0 AS passed,
-		       NOW()
-		FROM diagnostic_attempt_questions daq
-		JOIN questions q ON q.id = daq.question_id
-		LEFT JOIN question_attempts qa ON qa.attempt_id = daq.attempt_id AND qa.question_id = daq.question_id
-		LEFT JOIN LATERAL (
-			SELECT score, evaluation_status
-			FROM coding_submissions
-			WHERE attempt_id = daq.attempt_id
-			  AND question_id = daq.question_id
-			ORDER BY created_at DESC
-			LIMIT 1
-		) cs ON TRUE
-		WHERE daq.attempt_id = $1::uuid
-		GROUP BY daq.attempt_id, daq.topic_id
-		ON CONFLICT (attempt_id, topic_id) DO UPDATE SET
-		  score = EXCLUDED.score,
-		  max_score = EXCLUDED.max_score,
-		  percentage = EXCLUDED.percentage,
-		  passed = EXCLUDED.passed
-	`, attemptID); err != nil {
+        INSERT INTO diagnostic_topic_results (attempt_id, topic_id, score, max_score, percentage, passed, created_at)
+        SELECT daq.attempt_id,
+               daq.topic_id,
+               COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
+                 + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0) AS score,
+               GREATEST(COALESCE(SUM(q.marks),0),1) AS max_score,
+               ( (
+                  COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
+                  + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
+                 )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0 AS percentage,
+               (((
+                  COALESCE(SUM(CASE WHEN qa.is_correct THEN q.marks ELSE 0 END),0)
+                  + COALESCE(SUM(CASE WHEN cs.evaluation_status='completed' THEN COALESCE(cs.score,0)::int ELSE 0 END),0)
+                 )::float / GREATEST(COALESCE(SUM(q.marks),0),1)::float )*100.0) >= 80.0 AS passed,
+               NOW()
+        FROM diagnostic_attempt_questions daq
+        JOIN questions q ON q.id = daq.question_id
+        LEFT JOIN question_attempts qa ON qa.attempt_id = daq.attempt_id AND qa.question_id = daq.question_id
+        LEFT JOIN LATERAL (
+            SELECT score, evaluation_status
+            FROM coding_submissions
+            WHERE attempt_id = daq.attempt_id
+              AND question_id = daq.question_id
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) cs ON TRUE
+        WHERE daq.attempt_id = $1::uuid
+        GROUP BY daq.attempt_id, daq.topic_id
+        ON CONFLICT (attempt_id, topic_id) DO UPDATE SET
+          score = EXCLUDED.score,
+          max_score = EXCLUDED.max_score,
+          percentage = EXCLUDED.percentage,
+          passed = EXCLUDED.passed
+    `, attemptID); err != nil {
 		return fmt.Errorf("insert topic results: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, diagnostic_mastery, completed_at)
-		SELECT $1::uuid,
-		       dtr.topic_id,
-		       CASE WHEN dtr.percentage >= 80 THEN 'completed'::learning_progress_status ELSE 'in_progress'::learning_progress_status END,
-		       dtr.percentage,
-		       dtr.percentage,
-		       CASE WHEN dtr.percentage >= 80 THEN NOW() ELSE NULL END
-		FROM diagnostic_topic_results dtr
-		WHERE dtr.attempt_id = $2::uuid
-		ON CONFLICT (user_id, topic_id)
-		DO UPDATE SET
-		  diagnostic_mastery = EXCLUDED.diagnostic_mastery,
-		  mastery_score = GREATEST(EXCLUDED.diagnostic_mastery,
-		    CASE
-		      WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
-		      THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
-		      ELSE 0
-		    END
-		  ),
-		  status = CASE
-		    WHEN GREATEST(EXCLUDED.diagnostic_mastery,
-		      CASE
-		        WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
-		        THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
-		        ELSE 0
-		      END
-		    ) >= 80 THEN 'completed'::learning_progress_status
-		    ELSE user_topic_progress.status
-		  END,
-		  completed_at = CASE
-		    WHEN GREATEST(EXCLUDED.diagnostic_mastery,
-		      CASE
-		        WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
-		        THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
-		        ELSE 0
-		      END
-		    ) >= 80 THEN NOW()
-		    ELSE user_topic_progress.completed_at
-		  END
-	`, userID, attemptID); err != nil {
+        INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, diagnostic_mastery, completed_at)
+        SELECT $1::uuid,
+               dtr.topic_id,
+               CASE WHEN dtr.percentage >= 80 THEN 'completed'::learning_progress_status ELSE 'in_progress'::learning_progress_status END,
+               dtr.percentage,
+               dtr.percentage,
+               CASE WHEN dtr.percentage >= 80 THEN NOW() ELSE NULL END
+        FROM diagnostic_topic_results dtr
+        WHERE dtr.attempt_id = $2::uuid
+        ON CONFLICT (user_id, topic_id)
+        DO UPDATE SET
+          diagnostic_mastery = EXCLUDED.diagnostic_mastery,
+          mastery_score = GREATEST(EXCLUDED.diagnostic_mastery,
+            CASE
+              WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+              THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+              ELSE 0
+            END
+          ),
+          status = CASE
+            WHEN GREATEST(EXCLUDED.diagnostic_mastery,
+              CASE
+                WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+                THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+                ELSE 0
+              END
+            ) >= 80 THEN 'completed'::learning_progress_status
+            ELSE user_topic_progress.status
+          END,
+          completed_at = CASE
+            WHEN GREATEST(EXCLUDED.diagnostic_mastery,
+              CASE
+                WHEN COALESCE(user_topic_progress.total_external_questions,0) > 0
+                THEN (COALESCE(user_topic_progress.external_solved_count,0)::float / user_topic_progress.total_external_questions::float) * 100.0
+                ELSE 0
+              END
+            ) >= 80 THEN NOW()
+            ELSE user_topic_progress.completed_at
+          END
+    `, userID, attemptID); err != nil {
 		return fmt.Errorf("upsert user_topic_progress: %w", err)
 	}
 
@@ -596,9 +619,9 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	tRows.Close()
 
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO user_activity_feed (id, user_id, source, title, topic_id, solved_at)
-		VALUES (gen_random_uuid(), $1::uuid, 'diagnostic', 'Diagnostic attempt completed', NULL, NOW())
-	`, userID); err != nil {
+        INSERT INTO user_activity_feed (id, user_id, source, title, topic_id, solved_at)
+        VALUES (gen_random_uuid(), $1::uuid, 'diagnostic', 'Diagnostic attempt completed', NULL, NOW())
+    `, userID); err != nil {
 		return fmt.Errorf("insert diagnostic activity feed: %w", err)
 	}
 
@@ -606,11 +629,11 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 	today := time.Date(nowUTC.Year(), nowUTC.Month(), nowUTC.Day(), 0, 0, 0, 0, time.UTC)
 	var todayStreak int
 	err = tx.QueryRow(ctx, `
-		SELECT streak_count
-		FROM dashboard_daily_snapshots
-		WHERE user_id=$1::uuid AND snapshot_date=$2::date
-		FOR UPDATE
-	`, userID, today).Scan(&todayStreak)
+        SELECT streak_count
+        FROM dashboard_daily_snapshots
+        WHERE user_id=$1::uuid AND snapshot_date=$2::date
+        FOR UPDATE
+    `, userID, today).Scan(&todayStreak)
 	if err != nil && err != pgx.ErrNoRows {
 		return fmt.Errorf("load today snapshot streak: %w", err)
 	}
@@ -620,10 +643,10 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		var yesterdayStreak, yesterdayQuestions int
 		hadYesterdaySnapshot := false
 		err = tx.QueryRow(ctx, `
-			SELECT streak_count, questions_solved
-			FROM dashboard_daily_snapshots
-			WHERE user_id=$1::uuid AND snapshot_date=$2::date
-		`, userID, yesterday).Scan(&yesterdayStreak, &yesterdayQuestions)
+            SELECT streak_count, questions_solved
+            FROM dashboard_daily_snapshots
+            WHERE user_id=$1::uuid AND snapshot_date=$2::date
+        `, userID, yesterday).Scan(&yesterdayStreak, &yesterdayQuestions)
 		if err != nil && err != pgx.ErrNoRows {
 			return fmt.Errorf("load yesterday snapshot streak: %w", err)
 		}
@@ -633,14 +656,14 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 
 		yesterdayHadDiagnostic := false
 		if err := tx.QueryRow(ctx, `
-			SELECT EXISTS(
-				SELECT 1
-				FROM user_activity_feed
-				WHERE user_id=$1::uuid
-				  AND source='diagnostic'
-				  AND solved_at::date=$2::date
-			)
-		`, userID, yesterday).Scan(&yesterdayHadDiagnostic); err != nil {
+            SELECT EXISTS(
+                SELECT 1
+                FROM user_activity_feed
+                WHERE user_id=$1::uuid
+                  AND source='diagnostic'
+                  AND solved_at::date=$2::date
+            )
+        `, userID, yesterday).Scan(&yesterdayHadDiagnostic); err != nil {
 			return fmt.Errorf("check yesterday diagnostic activity: %w", err)
 		}
 
@@ -649,22 +672,22 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		}
 
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO dashboard_daily_snapshots (user_id, snapshot_date, streak_count, questions_solved, mastery_score, topics_completed, last_activity_at, computed_at)
-			VALUES ($1::uuid, $2::date, $3, 0, 0, 0, NOW(), NOW())
-			ON CONFLICT (user_id, snapshot_date) DO NOTHING
-		`, userID, today, newStreak); err != nil {
+            INSERT INTO dashboard_daily_snapshots (user_id, snapshot_date, streak_count, questions_solved, mastery_score, topics_completed, last_activity_at, computed_at)
+            VALUES ($1::uuid, $2::date, $3, 0, 0, 0, NOW(), NOW())
+            ON CONFLICT (user_id, snapshot_date) DO NOTHING
+        `, userID, today, newStreak); err != nil {
 			return fmt.Errorf("ensure dashboard snapshot row: %w", err)
 		}
 	}
 
-	res, err = tx.Exec(ctx, `
-		UPDATE dashboard_daily_snapshots
-		SET mastery_score = COALESCE((SELECT AVG(mastery_score) FROM user_topic_progress WHERE user_id=$1::uuid AND status <> 'not_started'::learning_progress_status),0),
-		    topics_completed = COALESCE((SELECT COUNT(*) FROM user_topic_progress WHERE user_id=$1::uuid AND status='completed'::learning_progress_status),0),
-		    last_activity_at = GREATEST(dashboard_daily_snapshots.last_activity_at, NOW()),
-		    computed_at = NOW()
-		WHERE user_id=$1::uuid AND snapshot_date=$2::date
-	`, userID, today)
+	res, err := tx.Exec(ctx, `
+        UPDATE dashboard_daily_snapshots
+        SET mastery_score = COALESCE((SELECT AVG(mastery_score) FROM user_topic_progress WHERE user_id=$1::uuid AND status <> 'not_started'::learning_progress_status),0),
+            topics_completed = COALESCE((SELECT COUNT(*) FROM user_topic_progress WHERE user_id=$1::uuid AND status='completed'::learning_progress_status),0),
+            last_activity_at = GREATEST(dashboard_daily_snapshots.last_activity_at, NOW()),
+            computed_at = NOW()
+        WHERE user_id=$1::uuid AND snapshot_date=$2::date
+    `, userID, today)
 	if err != nil {
 		return fmt.Errorf("update dashboard snapshot from diagnostic: %w", err)
 	}
@@ -672,14 +695,14 @@ func (r *Repository) CompleteDiagnosticAttempt(ctx context.Context, attemptID st
 		return fmt.Errorf("update dashboard snapshot from diagnostic: no rows affected")
 	}
 
-	res, err := tx.Exec(ctx, `
-		UPDATE test_attempts
-		SET status='submitted',
-		    submitted_at=NOW(),
-		    score=(SELECT COALESCE(SUM(score),0) FROM diagnostic_topic_results WHERE attempt_id=$1::uuid)
-		WHERE id=$1::uuid
-		  AND status='in_progress'
-	`, attemptID)
+	res, err = tx.Exec(ctx, `
+        UPDATE test_attempts
+        SET status='submitted',
+            submitted_at=NOW(),
+            score=(SELECT COALESCE(SUM(score),0) FROM diagnostic_topic_results WHERE attempt_id=$1::uuid)
+        WHERE id=$1::uuid
+          AND status='in_progress'
+    `, attemptID)
 	if err != nil {
 		return fmt.Errorf("finalize attempt: %w", err)
 	}
@@ -703,21 +726,21 @@ func (r *Repository) ensureUnlocksForUserTx(ctx context.Context, tx pgx.Tx, user
 		}
 		var blocked int
 		if err := tx.QueryRow(ctx, `
-			SELECT COUNT(*)
-			FROM topic_prerequisites tp
-			LEFT JOIN user_topic_progress utp
-			  ON utp.user_id=$1::uuid AND utp.topic_id=tp.prerequisite_id
-			WHERE tp.topic_id=$2::uuid
-			  AND COALESCE(utp.mastery_score,0) < 80
-		`, userID, topicID).Scan(&blocked); err != nil {
+            SELECT COUNT(*)
+            FROM topic_prerequisites tp
+            LEFT JOIN user_topic_progress utp
+              ON utp.user_id=$1::uuid AND utp.topic_id=tp.prerequisite_id
+            WHERE tp.topic_id=$2::uuid
+              AND COALESCE(utp.mastery_score,0) < 80
+        `, userID, topicID).Scan(&blocked); err != nil {
 			return err
 		}
 		if blocked == 0 {
 			if _, err := tx.Exec(ctx, `
-				INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, completed_at, external_solved_count, total_external_questions, diagnostic_mastery)
-				VALUES ($1::uuid,$2::uuid,'in_progress',0,NULL,0,0,0)
-				ON CONFLICT (user_id, topic_id) DO NOTHING
-			`, userID, topicID); err != nil {
+                INSERT INTO user_topic_progress (user_id, topic_id, status, mastery_score, completed_at, external_solved_count, total_external_questions, diagnostic_mastery)
+                VALUES ($1::uuid,$2::uuid,'in_progress',0,NULL,0,0,0)
+                ON CONFLICT (user_id, topic_id) DO NOTHING
+            `, userID, topicID); err != nil {
 				return err
 			}
 		}
@@ -738,21 +761,21 @@ func (r *Repository) GetDiagnosticAttemptStatus(ctx context.Context, attemptID s
 		return DiagnosticAttemptStatus{}, fmt.Errorf("assessment repository is not initialized")
 	}
 	const q = `
-	SELECT ta.id::text,
-	       ta.user_id::text,
-	       ta.status::text,
-	       ta.started_at,
-	       ta.expires_at,
-	       ta.submitted_at,
-	       COALESCE(MAX(daq.order_index) FILTER (WHERE daq.answered_at IS NOT NULL), 0) AS last_answered,
-	       COUNT(daq.question_id) AS total_questions,
-	       COUNT(daq.question_id) FILTER (WHERE daq.answered_at IS NOT NULL) AS answered_questions,
-	       COALESCE(SUM(daq.allotted_seconds),0) AS total_allowed_seconds
-	FROM test_attempts ta
-	LEFT JOIN diagnostic_attempt_questions daq ON daq.attempt_id = ta.id
-	WHERE ta.id=$1::uuid
-	GROUP BY ta.id, ta.user_id, ta.status, ta.started_at, ta.expires_at, ta.submitted_at
-	`
+    SELECT ta.id::text,
+           ta.user_id::text,
+           ta.status::text,
+           ta.started_at,
+           ta.expires_at,
+           ta.submitted_at,
+           COALESCE(MAX(daq.order_index) FILTER (WHERE daq.answered_at IS NOT NULL), 0) AS last_answered,
+           COUNT(daq.question_id) AS total_questions,
+           COUNT(daq.question_id) FILTER (WHERE daq.answered_at IS NOT NULL) AS answered_questions,
+           COALESCE(SUM(daq.allotted_seconds),0) AS total_allowed_seconds
+    FROM test_attempts ta
+    LEFT JOIN diagnostic_attempt_questions daq ON daq.attempt_id = ta.id
+    WHERE ta.id=$1::uuid
+    GROUP BY ta.id, ta.user_id, ta.status, ta.started_at, ta.expires_at, ta.submitted_at
+    `
 	var s DiagnosticAttemptStatus
 	if err := r.pool.QueryRow(ctx, q, attemptID).Scan(
 		&s.AttemptID, &s.UserID, &s.Status, &s.StartedAt, &s.ExpiresAt, &s.SubmittedAt,
@@ -771,15 +794,15 @@ func (r *Repository) GetUserStatus(ctx context.Context, userID string) (UserStat
 		return UserStatus{}, fmt.Errorf("assessment repository is not initialized")
 	}
 	const q = `
-	SELECT EXISTS (
-		SELECT 1
-		FROM test_attempts ta
-		JOIN tests t ON t.id = ta.test_id
-		WHERE ta.user_id = $1::uuid
-		  AND t.type = 'diagnostic'
-		  AND ta.status = 'submitted'
-	)
-	`
+    SELECT EXISTS (
+        SELECT 1
+        FROM test_attempts ta
+        JOIN tests t ON t.id = ta.test_id
+        WHERE ta.user_id = $1::uuid
+          AND t.type = 'diagnostic'
+          AND ta.status = 'submitted'
+    )
+    `
 	var completed bool
 	if err := r.pool.QueryRow(ctx, q, userID).Scan(&completed); err != nil {
 		return UserStatus{}, fmt.Errorf("query diagnostic status: %w", err)

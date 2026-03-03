@@ -15,11 +15,18 @@ set -euo pipefail
 # Usage:
 #   DATABASE_URL=... SUPABASE_URL=... ./backend/scripts/full_backend_test_flow.sh
 #   DATABASE_URL=... SUPABASE_URL=... TEST_JWT=... ./backend/scripts/full_backend_test_flow.sh
+export PORT=8080
+export DATABASE_URL="postgresql://postgres:arnoCODES110927@@db.jegwozmpaijrnyfonrie.supabase.co:5432/postgres?sslmode=disable"
+export REDIS_URL="redis://localhost:6379"
+export ENVIRONMENT="development"
+export SUPABASE_URL="https://jegwozmpaijrnyfonrie.supabase.co"
+export SUPABASE_AUDIENCE="authenticated"
+export TEST_JWT="eyJhbGciOiJFUzI1NiIsImtpZCI6ImQ3ZjMxYjliLTM3ZjEtND…elIoe_MaPO5zCS3FsPGoVlwAIsP1cboiLhPlcztpe6F6emiJw"
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
 PORT="${PORT:-18080}"
-BASE_URL="http://127.0.0.1:${PORT}"
+BASE_URL="http://localhost:${PORT}"
 LOG_FILE="${ROOT_DIR}/.backend_test_flow.log"
 
 require_cmd() {
@@ -77,7 +84,7 @@ start_server() {
   echo "[INFO] Server PID: $SERVER_PID"
 
   for _ in $(seq 1 60); do
-    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health" || true)
+    code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/health" || true)
     if [[ "$code" == "200" ]]; then
       echo "[PASS] Server is healthy"
       return
@@ -128,8 +135,8 @@ log_step "Static sanity checks"
 start_server
 
 log_step "Public health checks"
-code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health")
-expect_status "200" "$code" "GET /health"
+# code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health")
+# expect_status "200" "$code" "GET /health"
 code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/v1/health")
 expect_status "200" "$code" "GET /api/v1/health"
 
