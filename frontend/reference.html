@@ -1,0 +1,2208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgoIQ — DSA Learning Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   DESIGN TOKENS — All 5 Themes
+   ========================================================= */
+:root {
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+  --radius-xs: 4px;
+  --radius-sm: 7px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --sidebar-w: 218px;
+  --topbar-h: 56px;
+  --ease: cubic-bezier(0.4,0,0.2,1);
+}
+
+/* --- Midnight Scholar --- */
+[data-theme="midnight"] {
+  --bg-base:    #070c1a;
+  --bg-1:       #0d1526;
+  --bg-2:       #111d38;
+  --bg-card:    #182340;
+  --bg-raised:  #1e2f54;
+  --accent:     #f0c040;
+  --accent-dim: rgba(240,192,64,.12);
+  --accent-txt: #f0c040;
+  --logo-bg:    #f0c040;
+  --logo-fg:    #070c1a;
+  --txt-1:      #dde4f6;
+  --txt-2:      #7585a8;
+  --txt-3:      #3a4870;
+  --border:     rgba(255,255,255,.07);
+  --border-str: rgba(255,255,255,.14);
+  --success:    #4ecba0;
+  --warn:       #ef9f27;
+  --danger:     #e05555;
+  --info:       #5b9de8;
+  --tag-bg:     rgba(240,192,64,.13);
+  --tag-fg:     #f0c040;
+  --glow:       rgba(240,192,64,.07);
+}
+
+/* --- Deep Forest --- */
+[data-theme="forest"] {
+  --bg-base:    #020f09;
+  --bg-1:       #051f17;
+  --bg-2:       #072418;
+  --bg-card:    #0d3828;
+  --bg-raised:  #124535;
+  --accent:     #3ec99a;
+  --accent-dim: rgba(62,201,154,.12);
+  --accent-txt: #3ec99a;
+  --logo-bg:    #1d9e75;
+  --logo-fg:    #fff;
+  --txt-1:      #d0eee0;
+  --txt-2:      #4d7f62;
+  --txt-3:      #243d2e;
+  --border:     rgba(255,255,255,.06);
+  --border-str: rgba(255,255,255,.12);
+  --success:    #4ecba0;
+  --warn:       #ef9f27;
+  --danger:     #e05555;
+  --info:       #5b9de8;
+  --tag-bg:     rgba(62,201,154,.13);
+  --tag-fg:     #3ec99a;
+  --glow:       rgba(62,201,154,.06);
+}
+
+/* --- Arctic Slate --- */
+[data-theme="slate"] {
+  --bg-base:    #080f18;
+  --bg-1:       #0f1820;
+  --bg-2:       #131f2c;
+  --bg-card:    #1a2d40;
+  --bg-raised:  #203550;
+  --accent:     #5b9de8;
+  --accent-dim: rgba(91,157,232,.12);
+  --accent-txt: #5b9de8;
+  --logo-bg:    #378add;
+  --logo-fg:    #fff;
+  --txt-1:      #d4e3f4;
+  --txt-2:      #4e6e8e;
+  --txt-3:      #263a50;
+  --border:     rgba(255,255,255,.06);
+  --border-str: rgba(255,255,255,.13);
+  --success:    #4ecba0;
+  --warn:       #ef9f27;
+  --danger:     #e05555;
+  --info:       #5b9de8;
+  --tag-bg:     rgba(91,157,232,.13);
+  --tag-fg:     #5b9de8;
+  --glow:       rgba(91,157,232,.06);
+}
+
+/* --- Obsidian Flame --- */
+[data-theme="obsidian"] {
+  --bg-base:    #060504;
+  --bg-1:       #0e0c09;
+  --bg-2:       #121008;
+  --bg-card:    #1c180e;
+  --bg-raised:  #231f12;
+  --accent:     #ef9f27;
+  --accent-dim: rgba(239,159,39,.13);
+  --accent-txt: #ef9f27;
+  --logo-bg:    #ef9f27;
+  --logo-fg:    #060504;
+  --txt-1:      #ede5d0;
+  --txt-2:      #5e4e2e;
+  --txt-3:      #30250e;
+  --border:     rgba(255,255,255,.06);
+  --border-str: rgba(255,255,255,.12);
+  --success:    #4ecba0;
+  --warn:       #ef9f27;
+  --danger:     #e05555;
+  --info:       #5b9de8;
+  --tag-bg:     rgba(239,159,39,.13);
+  --tag-fg:     #ef9f27;
+  --glow:       rgba(239,159,39,.06);
+}
+
+/* --- Aurora Light --- */
+[data-theme="aurora"] {
+  --bg-base:    #eceafb;
+  --bg-1:       #f5f4ff;
+  --bg-2:       #eeecff;
+  --bg-card:    #ffffff;
+  --bg-raised:  #ffffff;
+  --accent:     #7f77dd;
+  --accent-dim: rgba(127,119,221,.1);
+  --accent-txt: #534ab7;
+  --logo-bg:    #7f77dd;
+  --logo-fg:    #fff;
+  --txt-1:      #18144a;
+  --txt-2:      #6258a8;
+  --txt-3:      #a89fd0;
+  --border:     rgba(83,74,183,.1);
+  --border-str: rgba(83,74,183,.2);
+  --success:    #0f7a56;
+  --warn:       #9a6210;
+  --danger:     #9a2a2a;
+  --info:       #1455a0;
+  --tag-bg:     rgba(127,119,221,.1);
+  --tag-fg:     #534ab7;
+  --glow:       rgba(127,119,221,.07);
+}
+
+/* =========================================================
+   GLOBAL RESET
+   ========================================================= */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%}
+body{
+  font-family:var(--font-body);
+  background:var(--bg-base);
+  color:var(--txt-1);
+  height:100vh;
+  overflow:hidden;
+  transition:background .4s var(--ease),color .4s var(--ease);
+}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;border:none;font-family:var(--font-body)}
+input,textarea,select{font-family:var(--font-body)}
+svg{display:block}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-str);border-radius:4px}
+
+/* =========================================================
+   APP SHELL
+   ========================================================= */
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* Topbar */
+.topbar{
+  height:var(--topbar-h);
+  background:var(--bg-1);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 18px;
+  gap:12px;
+  z-index:100;
+  flex-shrink:0;
+  transition:background .4s var(--ease);
+}
+
+.logo{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.logo-icon{
+  width:32px;height:32px;
+  border-radius:9px;
+  background:var(--logo-bg);
+  color:var(--logo-fg);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);
+  font-weight:800;font-size:12px;letter-spacing:-.5px;
+  flex-shrink:0;
+  transition:background .4s var(--ease);
+}
+.logo-text{
+  font-family:var(--font-display);
+  font-weight:700;font-size:15px;
+  color:var(--txt-1);letter-spacing:-.3px;
+}
+.logo-text em{color:var(--accent);font-style:normal}
+
+.topbar-sep{flex:1}
+
+.topbar-search{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-full);
+  padding:6px 14px;
+  font-size:12px;color:var(--txt-3);
+  cursor:pointer;
+  min-width:170px;
+  transition:border-color .2s;
+}
+.topbar-search:hover{border-color:var(--border-str);color:var(--txt-2)}
+.topbar-search kbd{
+  margin-left:auto;
+  font-family:var(--font-code);
+  font-size:10px;
+  background:var(--bg-raised);
+  padding:1px 6px;border-radius:4px;
+  color:var(--txt-3);
+}
+
+/* Theme switcher */
+.theme-switcher{
+  display:flex;align-items:center;gap:5px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-full);
+  padding:5px 10px;
+}
+.ts-label{font-size:10px;color:var(--txt-3);font-weight:500;margin-right:3px;white-space:nowrap}
+.ts-dot{
+  width:15px;height:15px;border-radius:50%;
+  cursor:pointer;
+  border:2px solid transparent;
+  transition:all .18s;
+  position:relative;
+}
+.ts-dot:hover{transform:scale(1.2)}
+.ts-dot.active{border-color:var(--txt-1);transform:scale(1.25);box-shadow:0 0 0 2px var(--bg-card)}
+.ts-dot[data-t="midnight"]{background:linear-gradient(135deg,#0d1526 50%,#f0c040 50%)}
+.ts-dot[data-t="forest"]  {background:linear-gradient(135deg,#051f17 50%,#3ec99a 50%)}
+.ts-dot[data-t="slate"]   {background:linear-gradient(135deg,#0f1820 50%,#5b9de8 50%)}
+.ts-dot[data-t="obsidian"]{background:linear-gradient(135deg,#0e0c09 50%,#ef9f27 50%)}
+.ts-dot[data-t="aurora"]  {background:linear-gradient(135deg,#eeecff 50%,#7f77dd 50%)}
+
+/* Topbar right */
+.topbar-icon{
+  width:32px;height:32px;
+  border-radius:var(--radius-md);
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:14px;
+  position:relative;
+  transition:background .2s;
+}
+.topbar-icon:hover{background:var(--bg-raised)}
+.notif-dot{
+  position:absolute;top:5px;right:5px;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+}
+.avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:var(--logo-bg);color:var(--logo-fg);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:11px;
+  cursor:pointer;flex-shrink:0;
+  font-family:var(--font-display);
+  transition:background .4s var(--ease);
+}
+
+/* Main body */
+.main-body{
+  display:flex;
+  flex:1;
+  overflow:hidden;
+}
+
+/* Sidebar */
+.sidebar{
+  width:var(--sidebar-w);
+  background:var(--bg-base);
+  border-right:1px solid var(--border);
+  padding:14px 9px;
+  display:flex;flex-direction:column;gap:1px;
+  overflow-y:auto;flex-shrink:0;
+  transition:background .4s var(--ease);
+}
+.nav-group-label{
+  font-size:9.5px;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;color:var(--txt-3);
+  padding:10px 10px 5px;margin-top:6px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;
+  border-radius:var(--radius-md);
+  cursor:pointer;transition:all .18s;
+  position:relative;
+  user-select:none;
+}
+.nav-item:hover{background:var(--accent-dim)}
+.nav-item.active{background:var(--accent-dim)}
+.nav-item.active::before{
+  content:'';position:absolute;
+  left:0;top:22%;bottom:22%;
+  width:3px;background:var(--accent);
+  border-radius:0 3px 3px 0;
+}
+.nav-icon{
+  width:28px;height:28px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+  background:var(--bg-card);
+  color:var(--txt-2);
+  transition:all .18s;
+}
+.nav-item.active .nav-icon,.nav-item:hover .nav-icon{
+  background:var(--accent-dim);color:var(--accent-txt);
+}
+.nav-label{font-size:13px;font-weight:500;color:var(--txt-2);transition:color .18s}
+.nav-item.active .nav-label,.nav-item:hover .nav-label{color:var(--accent-txt)}
+.nav-badge{
+  margin-left:auto;font-size:10px;font-weight:600;
+  background:var(--accent-dim);color:var(--accent-txt);
+  padding:2px 7px;border-radius:var(--radius-full);
+}
+.sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+
+/* Page container */
+.page-wrap{
+  flex:1;overflow-y:auto;
+  background:var(--bg-1);
+  transition:background .4s var(--ease);
+}
+.page{display:none;padding:22px;animation:pageIn .25s var(--ease)}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* =========================================================
+   SHARED DESIGN COMPONENTS
+   ========================================================= */
+
+/* Typography */
+.ph{font-family:var(--font-display);font-size:21px;font-weight:700;color:var(--txt-1);letter-spacing:-.5px;margin-bottom:3px}
+.ps{font-size:13px;color:var(--txt-2);margin-bottom:20px}
+
+/* Card */
+.card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px 20px;
+  transition:border-color .2s,background .4s var(--ease);
+}
+.card:hover{border-color:var(--border-str)}
+.card-ttl{
+  font-size:10.5px;font-weight:600;letter-spacing:.6px;
+  text-transform:uppercase;color:var(--txt-3);
+  margin-bottom:14px;display:flex;align-items:center;gap:7px;
+}
+.card-ttl span{
+  font-size:16px;
+  width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;
+}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:18px}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:15px 17px;
+  transition:all .2s;cursor:default;
+}
+.stat-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.stat-lbl{font-size:10px;font-weight:600;color:var(--txt-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.stat-lbl-icon{font-size:12px}
+.stat-val{
+  font-family:var(--font-display);font-size:28px;font-weight:800;
+  color:var(--accent);letter-spacing:-1.5px;line-height:1;margin-bottom:4px;
+}
+.stat-delta{font-size:11px;color:var(--txt-2)}
+.stat-delta.up{color:var(--success)}
+.stat-delta.dn{color:var(--danger)}
+
+/* Grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* Tags */
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 9px;border-radius:var(--radius-full);
+  font-size:11px;font-weight:600;
+}
+.tag-acc{background:var(--tag-bg);color:var(--tag-fg)}
+.tag-easy{background:rgba(78,203,160,.13);color:#3ec99a}
+.tag-med{background:rgba(239,159,39,.13);color:#ef9f27}
+.tag-hard{background:rgba(224,85,85,.13);color:#e05555}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px 18px;border-radius:var(--radius-md);
+  font-size:13px;font-weight:600;font-family:var(--font-body);
+  cursor:pointer;transition:all .2s;border:none;
+}
+.btn-primary{background:var(--accent);color:var(--logo-fg)}
+.btn-primary:hover{opacity:.86;transform:translateY(-1px)}
+.btn-ghost{
+  background:transparent;color:var(--txt-2);
+  border:1px solid var(--border);
+}
+.btn-ghost:hover{background:var(--bg-card);border-color:var(--border-str);color:var(--txt-1)}
+.btn-sm{padding:6px 13px;font-size:12px;border-radius:var(--radius-sm)}
+
+/* Progress */
+.prog-bg{height:5px;background:var(--bg-raised);border-radius:var(--radius-full);overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:var(--radius-full);transition:width .8s var(--ease)}
+
+/* =========================================================
+   PAGE 1 — LANDING
+   ========================================================= */
+.landing-wrap{
+  min-height:calc(100vh - var(--topbar-h));
+  display:flex;flex-direction:column;
+  background:var(--bg-1);
+  overflow-y:auto;
+}
+
+.hero{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:70px 40px 50px;
+  position:relative;overflow:hidden;
+}
+.hero-glow{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,var(--glow) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 15px;border-radius:var(--radius-full);
+  background:var(--accent-dim);border:1px solid var(--border-str);
+  font-size:12px;font-weight:600;color:var(--accent-txt);
+  margin-bottom:22px;letter-spacing:.2px;
+  position:relative;z-index:1;
+}
+.hero-eyebrow::before{content:'✦';font-size:10px}
+.hero-h1{
+  font-family:var(--font-display);
+  font-size:60px;font-weight:800;line-height:1.02;
+  letter-spacing:-2.5px;color:var(--txt-1);
+  margin-bottom:18px;position:relative;z-index:1;
+}
+.hero-h1 .hl{color:var(--accent)}
+.hero-p{
+  font-size:17px;color:var(--txt-2);line-height:1.65;
+  max-width:560px;margin:0 auto 34px;position:relative;z-index:1;
+}
+.hero-cta{
+  display:flex;gap:11px;justify-content:center;flex-wrap:wrap;
+  margin-bottom:60px;position:relative;z-index:1;
+}
+.hero-nums{
+  display:flex;gap:48px;justify-content:center;flex-wrap:wrap;
+  position:relative;z-index:1;
+}
+.hero-num-item{text-align:center}
+.hero-num-val{
+  font-family:var(--font-display);font-size:32px;font-weight:800;
+  color:var(--accent);letter-spacing:-1.5px;
+}
+.hero-num-lbl{font-size:12px;color:var(--txt-3);margin-top:3px}
+
+.features-wrap{
+  padding:50px 40px;
+  max-width:1100px;margin:0 auto;width:100%;
+}
+.sec-eyebrow{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-txt);margin-bottom:8px}
+.sec-h{
+  font-family:var(--font-display);font-size:36px;font-weight:700;
+  letter-spacing:-1px;color:var(--txt-1);margin-bottom:36px;
+}
+
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:40px}
+.feat-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-xl);padding:26px;
+  transition:all .22s;cursor:pointer;
+}
+.feat-card:hover{border-color:var(--accent);transform:translateY(-3px)}
+.feat-icon{
+  width:42px;height:42px;border-radius:var(--radius-md);
+  background:var(--accent-dim);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:19px;margin-bottom:14px;
+}
+.feat-ttl{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--txt-1);margin-bottom:7px}
+.feat-desc{font-size:13px;color:var(--txt-2);line-height:1.6}
+
+.cta-banner{
+  background:var(--accent-dim);border:1px solid var(--border-str);
+  border-radius:var(--radius-xl);
+  padding:36px 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:24px;flex-wrap:wrap;
+}
+.cta-txt h3{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--txt-1);margin-bottom:6px}
+.cta-txt p{font-size:13px;color:var(--txt-2)}
+
+/* =========================================================
+   PAGE 2 — DASHBOARD
+   ========================================================= */
+.dash-grid-top{margin-bottom:16px}
+
+/* Heatmap */
+.heatmap-outer{display:flex;flex-direction:column;gap:5px}
+.heatmap-months{
+  display:flex;
+  font-size:9.5px;color:var(--txt-3);
+  padding-left:2px;letter-spacing:.2px;
+  font-family:var(--font-code);
+}
+.heatmap-months span{flex:1;text-align:center}
+.heatmap-grid{display:flex;gap:3px}
+.hm-week{display:flex;flex-direction:column;gap:3px;flex:1}
+.hm-cell{
+  aspect-ratio:1;border-radius:2px;
+  background:var(--bg-raised);
+  cursor:pointer;transition:transform .1s;
+}
+.hm-cell:hover{transform:scale(1.4)}
+.hm-cell.l1{background:var(--accent);opacity:.2}
+.hm-cell.l2{background:var(--accent);opacity:.45}
+.hm-cell.l3{background:var(--accent);opacity:.7}
+.hm-cell.l4{background:var(--accent);opacity:1}
+.heatmap-legend{
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:4px;font-size:9.5px;color:var(--txt-3);font-family:var(--font-code);
+}
+.heatmap-legend span{
+  display:inline-block;width:10px;height:10px;border-radius:2px;
+  background:var(--accent);
+}
+.heatmap-legend span:nth-child(2){opacity:.2}
+.heatmap-legend span:nth-child(4){opacity:.45}
+.heatmap-legend span:nth-child(6){opacity:.7}
+.heatmap-legend span:nth-child(8){opacity:1}
+
+/* Topic mastery */
+.topic-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.topic-icon{
+  width:26px;height:26px;border-radius:var(--radius-xs);
+  background:var(--accent-dim);color:var(--accent-txt);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;flex-shrink:0;
+}
+.topic-name{font-size:12.5px;font-weight:500;color:var(--txt-1);min-width:88px;flex-shrink:0}
+.topic-bar{flex:1}
+.topic-pct{
+  font-size:11.5px;font-weight:600;color:var(--accent-txt);
+  min-width:34px;text-align:right;font-family:var(--font-code);flex-shrink:0;
+}
+
+/* Cross-platform */
+.plat-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--border);
+}
+.plat-row:last-child{border-bottom:none}
+.plat-logo{
+  width:28px;height:28px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-family:var(--font-code);flex-shrink:0;
+}
+.plat-info{flex:1}
+.plat-name{font-size:12px;font-weight:600;color:var(--txt-1)}
+.plat-sub{font-size:10px;color:var(--txt-3)}
+.plat-count{
+  font-family:var(--font-display);font-size:19px;font-weight:700;color:var(--accent);
+}
+
+/* Activity feed */
+.act-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:8px 0;border-bottom:1px solid var(--border);
+}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.act-body{flex:1;font-size:12.5px;color:var(--txt-2);line-height:1.5}
+.act-body strong{color:var(--txt-1);font-weight:600}
+.act-time{font-size:10.5px;color:var(--txt-3);font-family:var(--font-code);flex-shrink:0}
+
+/* Difficulty donut */
+.donut-wrap{
+  display:flex;align-items:center;gap:18px;
+}
+.donut-canvas{position:relative;width:90px;height:90px;flex-shrink:0}
+.donut-canvas canvas{position:absolute;inset:0}
+.donut-label-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.donut-center-num{font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--txt-1)}
+.donut-center-sub{font-size:9px;color:var(--txt-3)}
+.donut-legend{display:flex;flex-direction:column;gap:7px}
+.donut-leg-row{display:flex;align-items:center;gap:7px;font-size:12px}
+.donut-leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.donut-leg-name{color:var(--txt-2);flex:1}
+.donut-leg-val{font-weight:600;color:var(--txt-1);font-family:var(--font-code)}
+
+/* =========================================================
+   PAGE 3 — DAG MAP
+   ========================================================= */
+.dag-toolbar{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:14px;flex-wrap:wrap;
+}
+.dag-legend{
+  display:flex;align-items:center;gap:14px;
+  flex-wrap:wrap;margin-bottom:14px;
+}
+.dag-leg-item{
+  display:flex;align-items:center;gap:6px;
+  font-size:11.5px;color:var(--txt-2);
+}
+.dag-leg-dot{width:11px;height:11px;border-radius:50%}
+
+.dag-box{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  overflow:visible;
+  position:relative;
+  margin-bottom:18px;
+  padding:8px;
+}
+#dag-svg{width:100%;cursor:grab}
+#dag-svg:active{cursor:grabbing}
+
+.dag-tooltip{
+  position:fixed;
+  background:var(--bg-raised);border:1px solid var(--border-str);
+  border-radius:var(--radius-md);
+  padding:10px 14px;font-size:12px;color:var(--txt-1);
+  pointer-events:none;z-index:300;
+  opacity:0;transition:opacity .15s;
+  min-width:170px;
+}
+.dag-tooltip.show{opacity:1}
+.dag-tt-title{font-weight:700;margin-bottom:4px;font-size:13px}
+.dag-tt-row{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--txt-2);margin-bottom:2px}
+
+.dag-bottom-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:14px;flex-wrap:wrap;
+}
+
+/* =========================================================
+   PAGE 4 — AI INTERVIEW
+   ========================================================= */
+.interview-split{
+  display:grid;grid-template-columns:1fr 370px;
+  gap:14px;
+  height:calc(100vh - var(--topbar-h) - 80px);
+  min-height:500px;
+}
+
+.iv-left{display:flex;flex-direction:column;gap:13px}
+
+.prob-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:18px 20px;
+  flex-shrink:0;
+}
+.prob-number{
+  font-size:11px;font-weight:600;color:var(--txt-3);
+  font-family:var(--font-code);margin-bottom:6px;
+}
+.prob-title{
+  font-family:var(--font-display);font-size:17px;font-weight:700;
+  color:var(--txt-1);margin-bottom:8px;
+}
+.prob-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.prob-desc{font-size:13px;color:var(--txt-2);line-height:1.65}
+
+.code-editor{
+  flex:1;
+  background:var(--bg-base);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;display:flex;flex-direction:column;
+  min-height:0;
+}
+.editor-bar{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 14px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg-card);flex-shrink:0;
+}
+.ed-dot{width:9px;height:9px;border-radius:50%}
+.editor-lang{
+  margin-left:auto;font-size:11px;font-weight:600;
+  color:var(--txt-3);font-family:var(--font-code);
+  background:var(--bg-raised);padding:2px 8px;border-radius:var(--radius-xs);
+}
+.editor-actions{display:flex;gap:6px;margin-left:8px}
+.editor-body{
+  flex:1;overflow-y:auto;
+  padding:16px;
+  font-family:var(--font-code);font-size:13px;
+  color:var(--txt-1);line-height:1.75;
+}
+.cl{display:flex;gap:14px}
+.ln{color:var(--txt-3);min-width:18px;text-align:right;user-select:none;font-size:12px}
+.kw{color:var(--accent)}
+.fn{color:var(--info)}
+.str{color:var(--success)}
+.cm{color:var(--txt-3)}
+.tp{color:var(--warn)}
+.num{color:#e879a0}
+
+/* AI panel */
+.ai-panel{
+  display:flex;flex-direction:column;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+  min-height:0;
+}
+.ai-header{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:9px;flex-shrink:0;
+}
+.ai-ava{
+  width:30px;height:30px;border-radius:var(--radius-md);
+  background:var(--accent);color:var(--logo-fg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-family:var(--font-display);font-weight:800;flex-shrink:0;
+  transition:background .4s var(--ease);
+}
+.ai-h-ttl{font-size:13px;font-weight:600;color:var(--txt-1)}
+.ai-h-sub{font-size:10.5px;color:var(--txt-3);margin-top:1px}
+.ai-status{
+  margin-left:auto;display:flex;align-items:center;gap:5px;
+  font-size:10.5px;color:var(--success);font-weight:600;
+}
+.ai-status::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block}
+
+.ai-msgs{
+  flex:1;overflow-y:auto;
+  padding:14px;display:flex;flex-direction:column;gap:10px;
+}
+.ai-msg{display:flex;gap:8px}
+.ai-msg.user{flex-direction:row-reverse}
+.ai-msg-ava{
+  width:24px;height:24px;border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;font-family:var(--font-display);
+  flex-shrink:0;margin-top:2px;
+}
+.ai-bubble{
+  background:var(--bg-raised);border:1px solid var(--border);
+  border-radius:4px var(--radius-md) var(--radius-md) var(--radius-md);
+  padding:9px 13px;font-size:12.5px;color:var(--txt-2);line-height:1.6;
+  max-width:90%;
+}
+.ai-msg.user .ai-bubble{
+  background:var(--accent-dim);
+  border-color:var(--border);
+  border-radius:var(--radius-md) 4px var(--radius-md) var(--radius-md);
+  color:var(--txt-1);
+}
+.hint-steps{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.hint-step{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--txt-2)}
+.hint-num{
+  width:17px;height:17px;border-radius:50%;
+  background:var(--accent-dim);color:var(--accent-txt);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9.5px;font-weight:700;flex-shrink:0;margin-top:1px;
+}
+.hint-step.revealed .hint-num{background:var(--accent);color:var(--logo-fg)}
+.hint-step.locked{opacity:.35}
+
+.ai-step-btns{
+  display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;
+}
+
+.ai-input-row{
+  padding:10px;border-top:1px solid var(--border);
+  display:flex;gap:7px;flex-shrink:0;
+}
+.ai-textarea{
+  flex:1;
+  background:var(--bg-raised);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:8px 11px;
+  font-size:12px;color:var(--txt-1);
+  font-family:var(--font-body);outline:none;resize:none;height:36px;
+  transition:border-color .2s;
+}
+.ai-textarea:focus{border-color:var(--accent);height:70px}
+.ai-send{
+  width:34px;height:34px;background:var(--accent);color:var(--logo-fg);
+  border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;
+  font-size:15px;cursor:pointer;border:none;transition:opacity .2s;flex-shrink:0;
+  align-self:flex-end;
+}
+.ai-send:hover{opacity:.84}
+
+/* =========================================================
+   PAGE 5 — VISUALIZER
+   ========================================================= */
+.viz-split{
+  display:grid;grid-template-columns:220px 1fr;
+  gap:14px;
+  height:calc(100vh - var(--topbar-h) - 80px);
+  min-height:500px;
+}
+.viz-sidebar{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:14px;
+  overflow-y:auto;display:flex;flex-direction:column;gap:4px;
+}
+.viz-cat-lbl{
+  font-size:9.5px;font-weight:600;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--txt-3);
+  padding:8px 8px 4px;margin-top:6px;
+}
+.viz-cat-lbl:first-child{margin-top:0}
+.viz-btn{
+  display:flex;align-items:center;gap:7px;width:100%;
+  padding:7px 9px;border-radius:var(--radius-md);border:none;
+  background:transparent;color:var(--txt-2);
+  font-size:12.5px;font-family:var(--font-body);font-weight:500;
+  cursor:pointer;transition:all .15s;text-align:left;
+}
+.viz-btn:hover,.viz-btn.active{background:var(--accent-dim);color:var(--accent-txt)}
+.viz-bullet{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--txt-3);flex-shrink:0;transition:background .15s;
+}
+.viz-btn:hover .viz-bullet,.viz-btn.active .viz-bullet{background:var(--accent)}
+
+.viz-main{display:flex;flex-direction:column;gap:12px;min-height:0}
+.viz-controls{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:12px 16px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex-shrink:0;
+}
+.viz-ctrl-label{font-size:11.5px;color:var(--txt-2);font-weight:500}
+.viz-ctrl-val{
+  font-family:var(--font-code);font-size:12px;color:var(--accent-txt);
+  min-width:22px;text-align:center;
+}
+.viz-speed{display:flex;align-items:center;gap:7px;margin-left:auto}
+input[type="range"]{accent-color:var(--accent);width:80px;cursor:pointer}
+
+.viz-canvas-box{
+  flex:1;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);overflow:hidden;
+  position:relative;min-height:0;
+}
+#viz-canvas{display:block;width:100%;height:100%}
+
+.viz-info-row{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  font-size:12px;color:var(--txt-2);
+}
+.viz-info-chip{
+  background:var(--bg-raised);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:3px 9px;
+  font-family:var(--font-code);font-size:11.5px;color:var(--txt-2);
+}
+.viz-info-chip span{color:var(--accent-txt);font-weight:600}
+
+/* =========================================================
+   COURSE MAP MODAL
+   ========================================================= */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.72);
+  z-index:200;display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(5px);
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:var(--bg-2);border:1px solid var(--border-str);
+  border-radius:var(--radius-xl);
+  width:min(780px,94vw);max-height:88vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:mIn .28s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes mIn{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-hd{
+  padding:18px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.modal-title{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--txt-1)}
+.modal-close{
+  width:28px;height:28px;border-radius:var(--radius-sm);
+  background:var(--bg-card);border:1px solid var(--border);
+  color:var(--txt-2);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:14px;transition:all .15s;
+}
+.modal-close:hover{background:var(--bg-raised);color:var(--txt-1)}
+.modal-body{padding:20px 22px;overflow-y:auto;flex:1}
+
+.chapter-list{display:flex;flex-direction:column;gap:8px}
+.ch-item{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:14px 16px;
+  cursor:pointer;transition:all .2s;
+}
+.ch-item:hover{border-color:var(--border-str);transform:translateX(2px)}
+.ch-item.done{border-color:var(--success)}
+.ch-item.prog{border-color:var(--accent)}
+.ch-hd{display:flex;align-items:center;gap:10px}
+.ch-num{
+  width:30px;height:30px;border-radius:var(--radius-sm);
+  background:var(--bg-raised);color:var(--txt-2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-family:var(--font-display);flex-shrink:0;
+}
+.ch-item.done .ch-num{background:rgba(78,203,160,.15);color:#4ecba0}
+.ch-item.prog .ch-num{background:var(--accent-dim);color:var(--accent-txt)}
+.ch-name{font-size:13.5px;font-weight:600;color:var(--txt-1);flex:1}
+.ch-cnt{font-size:11px;color:var(--txt-3)}
+.ch-status{font-size:11px;font-weight:600}
+.ch-status.done{color:#4ecba0}
+.ch-status.prog{color:var(--accent-txt)}
+.ch-prog{margin-top:9px}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="logo" onclick="navTo('landing')">
+      <div class="logo-icon">AQ</div>
+      <span class="logo-text">Algo<em>IQ</em></span>
+    </div>
+
+    <div class="topbar-sep"></div>
+
+    <div class="topbar-search">
+      <span>🔍</span> Search problems, topics…
+      <kbd>⌘K</kbd>
+    </div>
+
+    <!-- Theme switcher -->
+    <div class="theme-switcher">
+      <span class="ts-label">Theme</span>
+      <div class="ts-dot active" data-t="midnight" title="Midnight Scholar" onclick="setTheme('midnight',this)"></div>
+      <div class="ts-dot" data-t="forest"   title="Deep Forest"       onclick="setTheme('forest',this)"></div>
+      <div class="ts-dot" data-t="slate"    title="Arctic Slate"      onclick="setTheme('slate',this)"></div>
+      <div class="ts-dot" data-t="obsidian" title="Obsidian Flame"    onclick="setTheme('obsidian',this)"></div>
+      <div class="ts-dot" data-t="aurora"   title="Aurora Light"      onclick="setTheme('aurora',this)"></div>
+    </div>
+
+    <div class="topbar-icon">
+      🔔
+      <div class="notif-dot"></div>
+    </div>
+    <div class="avatar">AJ</div>
+  </header>
+
+  <div class="main-body">
+
+    <!-- ===== SIDEBAR ===== -->
+    <nav class="sidebar">
+      <div class="nav-item active" data-page="landing" onclick="navTo('landing')">
+        <div class="nav-icon">🏠</div>
+        <span class="nav-label">Home</span>
+      </div>
+      <div class="nav-item" data-page="dashboard" onclick="navTo('dashboard')">
+        <div class="nav-icon">📊</div>
+        <span class="nav-label">Dashboard</span>
+      </div>
+
+      <div class="nav-group-label">Learning</div>
+      <div class="nav-item" data-page="dag" onclick="navTo('dag')">
+        <div class="nav-icon">🗺️</div>
+        <span class="nav-label">Course Map</span>
+      </div>
+      <div class="nav-item" data-page="visualizer" onclick="navTo('visualizer')">
+        <div class="nav-icon">🎯</div>
+        <span class="nav-label">Visualizer</span>
+      </div>
+
+      <div class="nav-group-label">Practice</div>
+      <div class="nav-item" data-page="interview" onclick="navTo('interview')">
+        <div class="nav-icon">🤖</div>
+        <span class="nav-label">AI Interview</span>
+        <span class="nav-badge">AI</span>
+      </div>
+
+      <div class="nav-group-label">Account</div>
+      <div class="nav-item">
+        <div class="nav-icon">⚙️</div>
+        <span class="nav-label">Settings</span>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="nav-item">
+          <div class="nav-icon">👤</div>
+          <span class="nav-label">Arjun Jain</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ===== PAGES ===== -->
+    <main class="page-wrap">
+
+      <!-- ========================
+           PAGE: LANDING
+           ======================== -->
+      <div class="page active" id="page-landing">
+        <div class="landing-wrap">
+          <section class="hero">
+            <div class="hero-glow"></div>
+            <div class="hero-eyebrow">Now in Beta — Join 12,000+ students</div>
+            <h1 class="hero-h1">
+              Master DSA with<br><span class="hl">AI-powered</span> guidance
+            </h1>
+            <p class="hero-p">
+              The most comprehensive DSA learning platform. Visual algorithms,
+              adaptive AI interviews, cross-platform tracking, and a structured
+              knowledge graph — all in one focused workspace.
+            </p>
+            <div class="hero-cta">
+              <button class="btn btn-primary" onclick="navTo('dashboard')">Start Learning →</button>
+              <button class="btn btn-ghost" onclick="navTo('dag')">Explore Course Map</button>
+            </div>
+            <div class="hero-nums">
+              <div class="hero-num-item">
+                <div class="hero-num-val">450+</div>
+                <div class="hero-num-lbl">Curated Problems</div>
+              </div>
+              <div class="hero-num-item">
+                <div class="hero-num-val">28</div>
+                <div class="hero-num-lbl">DSA Topics</div>
+              </div>
+              <div class="hero-num-item">
+                <div class="hero-num-val">15K+</div>
+                <div class="hero-num-lbl">Active Learners</div>
+              </div>
+              <div class="hero-num-item">
+                <div class="hero-num-val">94%</div>
+                <div class="hero-num-lbl">Interview Success</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="features-wrap">
+            <div class="sec-eyebrow">Platform Features</div>
+            <h2 class="sec-h">Everything you need to crack DSA</h2>
+            <div class="feat-grid">
+              <div class="feat-card" onclick="navTo('dashboard')">
+                <div class="feat-icon">📊</div>
+                <div class="feat-ttl">Smart Dashboard</div>
+                <div class="feat-desc">Track your progress across LeetCode, Codeforces, and HackerRank in one unified view. Topic mastery scores, streaks, and global rankings.</div>
+              </div>
+              <div class="feat-card" onclick="navTo('dag')">
+                <div class="feat-icon">🗺️</div>
+                <div class="feat-ttl">DAG Knowledge Graph</div>
+                <div class="feat-desc">A directed acyclic graph showing prerequisite relationships between topics. Color-coded completion nodes guide your learning path.</div>
+              </div>
+              <div class="feat-card" onclick="navTo('interview')">
+                <div class="feat-icon">🤖</div>
+                <div class="feat-ttl">AI Interview Coach</div>
+                <div class="feat-desc">Step-by-step Socratic hints. The AI guides you like a real interviewer — nudging without spoiling. Build genuine intuition.</div>
+              </div>
+              <div class="feat-card" onclick="navTo('visualizer')">
+                <div class="feat-icon">🎯</div>
+                <div class="feat-ttl">DSA Visualizer</div>
+                <div class="feat-desc">Watch sorting, tree traversal, graph algorithms and more animate in real-time. Adjust speed, step through manually, visualize complexity.</div>
+              </div>
+              <div class="feat-card">
+                <div class="feat-icon">🏆</div>
+                <div class="feat-ttl">Cross-Platform Sync</div>
+                <div class="feat-desc">Connect your LeetCode, Codeforces, and HackerRank accounts. All your solved problems in one aggregated mastery profile.</div>
+              </div>
+              <div class="feat-card">
+                <div class="feat-icon">⚡</div>
+                <div class="feat-ttl">Spaced Repetition</div>
+                <div class="feat-desc">Our algorithm schedules review problems based on your performance history, ensuring concepts stick in long-term memory.</div>
+              </div>
+            </div>
+
+            <div class="cta-banner">
+              <div class="cta-txt">
+                <h3>Ready to start your journey?</h3>
+                <p>Join thousands of students who cracked FAANG with AlgoIQ.</p>
+              </div>
+              <button class="btn btn-primary" onclick="navTo('dashboard')">Go to Dashboard →</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ========================
+           PAGE: DASHBOARD
+           ======================== -->
+      <div class="page" id="page-dashboard">
+        <div class="ph">Dashboard</div>
+        <div class="ps">Welcome back, Arjun — you're on a 23-day streak 🔥</div>
+
+        <!-- Stat cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-lbl"><span class="stat-lbl-icon">✅</span> Problems Solved</div>
+            <div class="stat-val">347</div>
+            <div class="stat-delta up">↑ 12 this week</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl"><span class="stat-lbl-icon">🔥</span> Current Streak</div>
+            <div class="stat-val">23d</div>
+            <div class="stat-delta up">Personal best!</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl"><span class="stat-lbl-icon">🌍</span> Global Rank</div>
+            <div class="stat-val">#842</div>
+            <div class="stat-delta up">↑ Top 8%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-lbl"><span class="stat-lbl-icon">⚡</span> Mastery Score</div>
+            <div class="stat-val">78%</div>
+            <div class="stat-delta up">↑ 5% this month</div>
+          </div>
+        </div>
+
+        <!-- Activity heatmap -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-ttl"><span>📅</span> Activity Heatmap — Last 52 Weeks</div>
+          <div class="heatmap-outer" id="heatmap-outer">
+            <div class="heatmap-months" id="hm-months"></div>
+            <div class="heatmap-grid" id="hm-grid"></div>
+            <div class="heatmap-legend">
+              Less <span></span><span></span><span></span><span></span> More
+            </div>
+          </div>
+        </div>
+
+        <div class="g2" style="margin-bottom:14px">
+          <!-- Topic mastery -->
+          <div class="card">
+            <div class="card-ttl"><span>📈</span> Topic Mastery</div>
+            <div id="topics-list"></div>
+            <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap" id="badges-list"></div>
+          </div>
+
+          <!-- Cross-platform -->
+          <div class="card">
+            <div class="card-ttl"><span>🔗</span> Cross-Platform Solved</div>
+            <div id="platforms-list"></div>
+            <div style="margin-top:16px">
+              <div class="card-ttl"><span>🎯</span> Difficulty Breakdown</div>
+              <div class="donut-wrap">
+                <div class="donut-canvas">
+                  <canvas id="donut-canvas" width="90" height="90"></canvas>
+                  <div class="donut-label-center">
+                    <div class="donut-center-num">347</div>
+                    <div class="donut-center-sub">solved</div>
+                  </div>
+                </div>
+                <div class="donut-legend">
+                  <div class="donut-leg-row"><div class="donut-leg-dot" style="background:#4ecba0"></div><span class="donut-leg-name">Easy</span><span class="donut-leg-val">142</span></div>
+                  <div class="donut-leg-row"><div class="donut-leg-dot" style="background:#ef9f27"></div><span class="donut-leg-name">Medium</span><span class="donut-leg-val">158</span></div>
+                  <div class="donut-leg-row"><div class="donut-leg-dot" style="background:#e05555"></div><span class="donut-leg-name">Hard</span><span class="donut-leg-val">47</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="g2">
+          <!-- Recent activity -->
+          <div class="card">
+            <div class="card-ttl"><span>⚡</span> Recent Activity</div>
+            <div id="activity-list"></div>
+          </div>
+
+          <!-- Upcoming review -->
+          <div class="card">
+            <div class="card-ttl"><span>🔁</span> Spaced Repetition Queue</div>
+            <div id="review-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================
+           PAGE: DAG MAP
+           ======================== -->
+      <div class="page" id="page-dag">
+        <div class="ph">Course Knowledge Graph</div>
+        <div class="ps">Navigate your learning path — nodes show completion percentage</div>
+
+        <div class="dag-toolbar">
+          <div class="dag-legend">
+            <div class="dag-leg-item"><div class="dag-leg-dot" style="background:#4ecba0"></div> Completed (≥80%)</div>
+            <div class="dag-leg-item"><div class="dag-leg-dot" style="background:#ef9f27"></div> In Progress (40–79%)</div>
+            <div class="dag-leg-item"><div class="dag-leg-dot" style="background:#e05555"></div> Started (&lt;40%)</div>
+            <div class="dag-leg-item"><div class="dag-leg-dot" style="background:var(--bg-raised);border:1px solid var(--border-str)"></div> Not Started</div>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:7px">
+            <button class="btn btn-ghost btn-sm" onclick="resetDagPan()">Reset View</button>
+          </div>
+        </div>
+
+        <div class="dag-box">
+          <svg id="dag-svg" viewBox="0 0 900 620" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+
+        <div class="dag-bottom-bar">
+          <div style="font-size:12.5px;color:var(--txt-2)">
+            Hover nodes to see details · Click to select · 
+            <strong style="color:var(--txt-1)">12 of 28 topics</strong> completed
+          </div>
+          <button class="btn btn-primary" onclick="openModal()">Access Full Course →</button>
+        </div>
+      </div>
+
+      <!-- ========================
+           PAGE: AI INTERVIEW
+           ======================== -->
+      <div class="page" id="page-interview">
+        <div class="ph">AI Interview Helper</div>
+        <div class="ps">Get Socratic step-by-step guidance — like a real technical interview</div>
+
+        <div class="interview-split">
+          <!-- Left: problem + code -->
+          <div class="iv-left">
+            <div class="prob-card">
+              <div class="prob-number">#42 · LeetCode Hard</div>
+              <div class="prob-title">Trapping Rain Water</div>
+              <div class="prob-tags">
+                <span class="tag tag-hard">Hard</span>
+                <span class="tag tag-acc">Arrays</span>
+                <span class="tag tag-acc">Two Pointers</span>
+                <span class="tag tag-acc">Dynamic Programming</span>
+              </div>
+              <div class="prob-desc">
+                Given <code style="font-family:var(--font-code);font-size:12px;background:var(--bg-raised);padding:1px 5px;border-radius:3px">n</code> non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.
+                <br><br>
+                <strong style="color:var(--txt-1)">Example:</strong> Input: <code style="font-family:var(--font-code);font-size:12px;background:var(--bg-raised);padding:1px 5px;border-radius:3px">height = [0,1,0,2,1,0,1,3,2,1,2,1]</code> → Output: <code style="font-family:var(--font-code);font-size:12px;background:var(--bg-raised);padding:1px 5px;border-radius:3px">6</code>
+              </div>
+            </div>
+
+            <!-- Code editor -->
+            <div class="code-editor">
+              <div class="editor-bar">
+                <div class="ed-dot" style="background:#ff5f57"></div>
+                <div class="ed-dot" style="background:#ffbd2e"></div>
+                <div class="ed-dot" style="background:#28c840"></div>
+                <span class="editor-lang">Python 3</span>
+                <div class="editor-actions">
+                  <button class="btn btn-ghost btn-sm">▶ Run</button>
+                  <button class="btn btn-primary btn-sm">Submit</button>
+                </div>
+              </div>
+              <div class="editor-body">
+<div class="cl"><span class="ln">1</span><span class="cm"># Two Pointer approach — O(n) time, O(1) space</span></div>
+<div class="cl"><span class="ln">2</span><span class="kw">def </span><span class="fn">trap</span>(self, <span class="tp">height</span>: <span class="fn">List</span>[<span class="fn">int</span>]) -> <span class="fn">int</span>:</div>
+<div class="cl"><span class="ln">3</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">if not</span> height: <span class="kw">return</span> <span class="num">0</span></div>
+<div class="cl"><span class="ln">4</span></div>
+<div class="cl"><span class="ln">5</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span>left, right = <span class="num">0</span>, <span class="fn">len</span>(height) - <span class="num">1</span></div>
+<div class="cl"><span class="ln">6</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span>left_max, right_max = <span class="num">0</span>, <span class="num">0</span></div>
+<div class="cl"><span class="ln">7</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span>water = <span class="num">0</span></div>
+<div class="cl"><span class="ln">8</span></div>
+<div class="cl"><span class="ln">9</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">while</span> left &lt; right:</div>
+<div class="cl"><span class="ln">10</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">if</span> height[left] &lt; height[right]:</div>
+<div class="cl"><span class="ln">11</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">if</span> height[left] >= left_max:</div>
+<div class="cl"><span class="ln">12</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>left_max = height[left]</div>
+<div class="cl"><span class="ln">13</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">else</span>:</div>
+<div class="cl"><span class="ln">14</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>water += left_max - height[left]</div>
+<div class="cl"><span class="ln">15</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>left += <span class="num">1</span></div>
+<div class="cl"><span class="ln">16</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">else</span>:</div>
+<div class="cl"><span class="ln">17</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">if</span> height[right] >= right_max:</div>
+<div class="cl"><span class="ln">18</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>right_max = height[right]</div>
+<div class="cl"><span class="ln">19</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">else</span>:</div>
+<div class="cl"><span class="ln">20</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>water += right_max - height[right]</div>
+<div class="cl"><span class="ln">21</span><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>right -= <span class="num">1</span></div>
+<div class="cl"><span class="ln">22</span></div>
+<div class="cl"><span class="ln">23</span><span>&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="kw">return</span> water</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: AI panel -->
+          <div class="ai-panel">
+            <div class="ai-header">
+              <div class="ai-ava">AI</div>
+              <div>
+                <div class="ai-h-ttl">AlgoIQ Interview Coach</div>
+                <div class="ai-h-sub">Socratic guidance mode</div>
+              </div>
+              <div class="ai-status">Online</div>
+            </div>
+
+            <div class="ai-msgs" id="ai-msgs">
+              <!-- AI welcome -->
+              <div class="ai-msg">
+                <div class="ai-msg-ava" style="background:var(--accent);color:var(--logo-fg)">AI</div>
+                <div class="ai-bubble">
+                  👋 Great choice! <strong>Trapping Rain Water</strong> is a classic. Before diving into code — can you describe what the problem is asking in your own words?
+                </div>
+              </div>
+
+              <!-- User reply -->
+              <div class="ai-msg user">
+                <div class="ai-msg-ava" style="background:var(--logo-bg);color:var(--logo-fg)">AJ</div>
+                <div class="ai-bubble">
+                  We need to find how much water gets trapped between the bars after rain.
+                </div>
+              </div>
+
+              <!-- AI step hints -->
+              <div class="ai-msg">
+                <div class="ai-msg-ava" style="background:var(--accent);color:var(--logo-fg)">AI</div>
+                <div class="ai-bubble">
+                  Exactly! Now, for any position <code style="font-family:var(--font-code);font-size:11px;background:var(--bg-raised);padding:1px 4px;border-radius:3px">i</code>, how much water does it hold? Think about what's to its left and right.
+
+                  <div class="hint-steps" id="hint-steps">
+                    <div class="hint-step revealed">
+                      <div class="hint-num">1</div>
+                      <div>Water at position i = min(max_left, max_right) − height[i]</div>
+                    </div>
+                    <div class="hint-step revealed">
+                      <div class="hint-num">2</div>
+                      <div>A brute-force approach scans left and right for every index → O(n²)</div>
+                    </div>
+                    <div class="hint-step" id="hint-3">
+                      <div class="hint-num">3</div>
+                      <div>Can you precompute left_max and right_max arrays?</div>
+                    </div>
+                    <div class="hint-step locked" id="hint-4">
+                      <div class="hint-num">4</div>
+                      <div>Two pointers can solve this in O(n) time, O(1) space — why?</div>
+                    </div>
+                    <div class="hint-step locked" id="hint-5">
+                      <div class="hint-num">5</div>
+                      <div>The side with the smaller max-height is the bottleneck — process it first.</div>
+                    </div>
+                  </div>
+
+                  <div class="ai-step-btns">
+                    <button class="btn btn-ghost btn-sm" onclick="revealHint()">Next Hint 💡</button>
+                    <button class="btn btn-ghost btn-sm" onclick="showSolution()">Show Solution</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ai-msg" id="ai-complexity-msg" style="display:none">
+                <div class="ai-msg-ava" style="background:var(--accent);color:var(--logo-fg)">AI</div>
+                <div class="ai-bubble">
+                  🎉 Your two-pointer solution is optimal!<br><br>
+                  <strong>Time:</strong> O(n) — single pass<br>
+                  <strong>Space:</strong> O(1) — no extra arrays<br><br>
+                  This is the expected approach in a real interview. Would you like to try a variant — what if the bars had variable widths?
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-input-row">
+              <textarea class="ai-textarea" placeholder="Ask a question or explain your approach…" id="ai-input"></textarea>
+              <button class="ai-send" onclick="sendAiMsg()">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================
+           PAGE: VISUALIZER
+           ======================== -->
+      <div class="page" id="page-visualizer">
+        <div class="ph">DSA Visualizer</div>
+        <div class="ps">Watch algorithms come alive — step through or play at your own pace</div>
+
+        <div class="viz-split">
+          <!-- Algorithm sidebar -->
+          <div class="viz-sidebar">
+            <div class="viz-cat-lbl">Sorting</div>
+            <button class="viz-btn active" onclick="selectAlgo('bubble',this)"><div class="viz-bullet"></div> Bubble Sort</button>
+            <button class="viz-btn" onclick="selectAlgo('selection',this)"><div class="viz-bullet"></div> Selection Sort</button>
+            <button class="viz-btn" onclick="selectAlgo('insertion',this)"><div class="viz-bullet"></div> Insertion Sort</button>
+            <button class="viz-btn" onclick="selectAlgo('merge',this)"><div class="viz-bullet"></div> Merge Sort</button>
+            <button class="viz-btn" onclick="selectAlgo('quick',this)"><div class="viz-bullet"></div> Quick Sort</button>
+
+            <div class="viz-cat-lbl">Searching</div>
+            <button class="viz-btn" onclick="selectAlgo('binary',this)"><div class="viz-bullet"></div> Binary Search</button>
+            <button class="viz-btn" onclick="selectAlgo('linear',this)"><div class="viz-bullet"></div> Linear Search</button>
+
+            <div class="viz-cat-lbl">Trees</div>
+            <button class="viz-btn" onclick="selectAlgo('bst',this)"><div class="viz-bullet"></div> BST Traversal</button>
+            <button class="viz-btn" onclick="selectAlgo('bfs',this)"><div class="viz-bullet"></div> BFS / BFS Tree</button>
+
+            <div class="viz-cat-lbl">Graphs</div>
+            <button class="viz-btn" onclick="selectAlgo('dfs',this)"><div class="viz-bullet"></div> DFS</button>
+            <button class="viz-btn" onclick="selectAlgo('dijkstra',this)"><div class="viz-bullet"></div> Dijkstra</button>
+          </div>
+
+          <!-- Canvas -->
+          <div class="viz-main">
+            <div class="viz-controls">
+              <span class="viz-ctrl-label">Algorithm:</span>
+              <span class="tag tag-acc" id="algo-name-tag">Bubble Sort</span>
+
+              <div style="display:flex;align-items:center;gap:7px">
+                <button class="btn btn-ghost btn-sm" onclick="vizReset()">↺ Reset</button>
+                <button class="btn btn-ghost btn-sm" onclick="vizStep()">Step ▷</button>
+                <button class="btn btn-primary btn-sm" id="play-btn" onclick="vizPlay()">▶ Play</button>
+              </div>
+
+              <div class="viz-speed">
+                <span class="viz-ctrl-label">Speed</span>
+                <input type="range" min="1" max="10" value="5" id="speed-slider" oninput="updateSpeed(this.value)">
+                <span class="viz-ctrl-val" id="speed-val">5×</span>
+              </div>
+
+              <button class="btn btn-ghost btn-sm" onclick="vizShuffle()">🔀 New Array</button>
+            </div>
+
+            <div class="viz-canvas-box">
+              <canvas id="viz-canvas"></canvas>
+            </div>
+
+            <div class="viz-info-row">
+              <span class="viz-ctrl-label">Complexity:</span>
+              <div class="viz-info-chip">Time: <span id="tc-val">O(n²)</span></div>
+              <div class="viz-info-chip">Space: <span id="sc-val">O(1)</span></div>
+              <div class="viz-info-chip">Comparisons: <span id="cmp-val">0</span></div>
+              <div class="viz-info-chip">Swaps: <span id="swp-val">0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===== COURSE MAP MODAL ===== -->
+<div class="modal-overlay" id="course-modal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <div class="modal-title">📚 Full Course Map — Data Structures & Algorithms</div>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <div class="tag tag-easy" style="padding:4px 12px">12 Completed</div>
+        <div class="tag tag-med" style="padding:4px 12px">5 In Progress</div>
+        <div class="tag tag-acc" style="padding:4px 12px">11 Not Started</div>
+        <div style="margin-left:auto;font-size:12px;color:var(--txt-2)">Overall: <strong style="color:var(--accent-txt)">43%</strong></div>
+      </div>
+      <div class="chapter-list" id="chapter-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="dag-tooltip" id="dag-tt"></div>
+
+<script>
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  const nav = document.querySelector(`[data-page="${page}"]`);
+  if (nav) nav.classList.add('active');
+
+  if (page === 'dashboard') initDashboard();
+  if (page === 'dag') initDAG();
+  if (page === 'visualizer') initVisualizer();
+}
+
+/* =========================================================
+   THEME SWITCHER
+   ========================================================= */
+function setTheme(t, el) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelectorAll('.ts-dot').forEach(d => d.classList.remove('active'));
+  if (el) el.classList.add('active');
+  // Re-draw canvas elements
+  setTimeout(() => {
+    drawDonut();
+    redrawViz();
+  }, 50);
+}
+
+function getCSSVar(v) {
+  return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+}
+
+/* =========================================================
+   DASHBOARD DATA & RENDER
+   ========================================================= */
+const topicsData = [
+  { name: 'Arrays',      icon: '▦', pct: 94 },
+  { name: 'Strings',     icon: '≋', pct: 88 },
+  { name: 'Linked List', icon: '⟳', pct: 76 },
+  { name: 'Trees',       icon: '⸸', pct: 71 },
+  { name: 'Graphs',      icon: '⬡', pct: 54 },
+  { name: 'Heaps',       icon: '▲', pct: 60 },
+  { name: 'Sorting',     icon: '↕', pct: 82 },
+  { name: 'DP',          icon: '◈', pct: 38 },
+];
+
+const platforms = [
+  { name:'LeetCode',   short:'LC', bg:'#ffa11630', color:'#ffa116', solved:184, rank:'Top 12%' },
+  { name:'Codeforces', short:'CF', bg:'#1f8dd630', color:'#1f8dd6', solved:98,  rank:'Div. 2' },
+  { name:'HackerRank', short:'HR', bg:'#2ec86630', color:'#2ec866', solved:65,  rank:'5 Stars' },
+];
+
+const activities = [
+  { text:'Solved <strong>LRU Cache</strong> (Hard)', time:'2h ago', col:'#4ecba0' },
+  { text:'Reviewed <strong>Binary Trees</strong> — 3 problems', time:'5h ago', col:'var(--accent)' },
+  { text:'Completed <strong>Graph Algorithms</strong> module', time:'Yesterday', col:'#5b9de8' },
+  { text:'New personal best streak: <strong>23 days</strong>', time:'2d ago', col:'var(--warn)' },
+  { text:'Solved <strong>Trapping Rain Water</strong> (Hard)', time:'2d ago', col:'var(--danger)' },
+];
+
+const reviewQueue = [
+  { name:'Two Sum',          difficulty:'Easy',   due:'Today',     due_col:'var(--danger)' },
+  { name:'Merge K Lists',    difficulty:'Hard',   due:'Tomorrow',  due_col:'var(--warn)' },
+  { name:'LCA Binary Tree',  difficulty:'Medium', due:'In 2 days', due_col:'var(--success)' },
+  { name:'Valid Parentheses',difficulty:'Easy',   due:'In 3 days', due_col:'var(--success)' },
+];
+
+const badges = ['Array Expert','String Solver','Tree Climber','Sort Master'];
+
+let dashInit = false;
+function initDashboard() {
+  if (dashInit) return;
+  dashInit = true;
+
+  // Topics
+  const tl = document.getElementById('topics-list');
+  tl.innerHTML = topicsData.map(t => `
+    <div class="topic-row">
+      <div class="topic-icon">${t.icon}</div>
+      <div class="topic-name">${t.name}</div>
+      <div class="topic-bar">
+        <div class="prog-bg"><div class="prog-fill" style="width:${t.pct}%"></div></div>
+      </div>
+      <div class="topic-pct">${t.pct}%</div>
+    </div>`).join('');
+
+  // Badges
+  document.getElementById('badges-list').innerHTML = badges.map(b =>
+    `<span class="tag tag-acc">${b}</span>`).join('');
+
+  // Platforms
+  document.getElementById('platforms-list').innerHTML = platforms.map(p => `
+    <div class="plat-row">
+      <div class="plat-logo" style="background:${p.bg};color:${p.color}">${p.short}</div>
+      <div class="plat-info">
+        <div class="plat-name">${p.name}</div>
+        <div class="plat-sub">${p.rank}</div>
+      </div>
+      <div class="plat-count">${p.solved}</div>
+    </div>`).join('');
+
+  // Activity
+  document.getElementById('activity-list').innerHTML = activities.map(a => `
+    <div class="act-item">
+      <div class="act-dot" style="background:${a.col}"></div>
+      <div class="act-body">${a.text}</div>
+      <div class="act-time">${a.time}</div>
+    </div>`).join('');
+
+  // Review queue
+  document.getElementById('review-list').innerHTML = reviewQueue.map(r => `
+    <div class="act-item">
+      <div class="act-dot" style="background:${r.due_col}"></div>
+      <div class="act-body"><strong>${r.name}</strong><br><span class="tag ${r.difficulty==='Easy'?'tag-easy':r.difficulty==='Hard'?'tag-hard':'tag-med'}" style="padding:1px 7px;font-size:10px">${r.difficulty}</span></div>
+      <div class="act-time" style="color:${r.due_col}">${r.due}</div>
+    </div>`).join('');
+
+  // Heatmap
+  buildHeatmap();
+
+  // Donut
+  drawDonut();
+}
+
+function buildHeatmap() {
+  const months = document.getElementById('hm-months');
+  const grid   = document.getElementById('hm-grid');
+  const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const weeks = 52;
+  const days  = 7;
+  const cells = weeks * days;
+
+  const data = Array.from({length: cells}, () => {
+    const r = Math.random();
+    if (r < .35) return 0;
+    if (r < .55) return 1;
+    if (r < .75) return 2;
+    if (r < .9)  return 3;
+    return 4;
+  });
+
+  // Month labels — evenly spaced
+  months.innerHTML = '';
+  for (let i = 0; i < 12; i++) {
+    const s = document.createElement('span');
+    s.textContent = mNames[i];
+    months.appendChild(s);
+  }
+
+  // Grid
+  grid.innerHTML = '';
+  for (let w = 0; w < weeks; w++) {
+    const wk = document.createElement('div');
+    wk.className = 'hm-week';
+    for (let d = 0; d < days; d++) {
+      const c = document.createElement('div');
+      const val = data[w * days + d];
+      c.className = 'hm-cell' + (val > 0 ? ` l${val}` : '');
+      c.title = `${val} problems`;
+      wk.appendChild(c);
+    }
+    grid.appendChild(wk);
+  }
+}
+
+function drawDonut() {
+  const canvas = document.getElementById('donut-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = 90, h = 90, cx = 45, cy = 45, r = 37, inner = 24;
+  ctx.clearRect(0, 0, w, h);
+
+  const slices = [
+    { val: 142, color: '#4ecba0' },
+    { val: 158, color: '#ef9f27' },
+    { val:  47, color: '#e05555' },
+  ];
+  const total = slices.reduce((s, x) => s + x.val, 0);
+  let start = -Math.PI / 2;
+
+  slices.forEach(sl => {
+    const angle = (sl.val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + angle);
+    ctx.closePath();
+    ctx.fillStyle = sl.color;
+    ctx.fill();
+    start += angle;
+  });
+
+  // Inner hole
+  const bg = getCSSVar('--bg-card') || '#182340';
+  ctx.beginPath();
+  ctx.arc(cx, cy, inner, 0, Math.PI * 2);
+  ctx.fillStyle = bg;
+  ctx.fill();
+}
+
+/* =========================================================
+   DAG
+   ========================================================= */
+const dagNodes = [
+  // Foundations row
+  { id:'arrays',    label:'Arrays',       pct:94, x:100, y:50,  prereqs:[] },
+  { id:'strings',   label:'Strings',      pct:88, x:300, y:50,  prereqs:[] },
+  { id:'math',      label:'Math/Bits',    pct:80, x:500, y:50,  prereqs:[] },
+  { id:'hashing',   label:'Hashing',      pct:76, x:700, y:50,  prereqs:[] },
+
+  // Level 2
+  { id:'twoptr',    label:'Two Pointers', pct:82, x:100, y:180, prereqs:['arrays','strings'] },
+  { id:'sliding',   label:'Sliding Win.', pct:70, x:300, y:180, prereqs:['arrays','hashing'] },
+  { id:'stack',     label:'Stack/Queue',  pct:75, x:500, y:180, prereqs:['arrays'] },
+  { id:'linked',    label:'Linked List',  pct:72, x:700, y:180, prereqs:['arrays'] },
+
+  // Level 3
+  { id:'binary',    label:'Binary Search',pct:65, x:100, y:310, prereqs:['arrays','twoptr'] },
+  { id:'trees',     label:'Trees',        pct:71, x:350, y:310, prereqs:['linked','stack'] },
+  { id:'heaps',     label:'Heaps',        pct:60, x:600, y:310, prereqs:['arrays','hashing'] },
+  { id:'greedy',    label:'Greedy',       pct:55, x:800, y:310, prereqs:['arrays','math'] },
+
+  // Level 4
+  { id:'bst',       label:'BST',          pct:68, x:200, y:440, prereqs:['trees','binary'] },
+  { id:'graphs',    label:'Graphs',       pct:54, x:450, y:440, prereqs:['trees','hashing'] },
+  { id:'dp',        label:'Dyn. Prog.',   pct:38, x:700, y:440, prereqs:['greedy','binary'] },
+
+  // Level 5
+  { id:'advanced',  label:'Adv. Graphs',  pct:22, x:350, y:570, prereqs:['graphs','dp'] },
+  { id:'tries',     label:'Tries',        pct:15, x:600, y:570, prereqs:['trees','hashing'] },
+];
+
+function nodeColor(pct) {
+  if (pct === 0) return null;
+  if (pct >= 80)  return '#4ecba0';
+  if (pct >= 40)  return '#ef9f27';
+  return '#e05555';
+}
+
+let dagInit = false;
+function initDAG() {
+  if (dagInit) return;
+  dagInit = true;
+  renderDAG();
+}
+
+function renderDAG() {
+  const svg = document.getElementById('dag-svg');
+  svg.innerHTML = '';
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const defs = document.createElementNS(ns, 'defs');
+  const marker = document.createElementNS(ns, 'marker');
+  marker.setAttribute('id','arrowhead');
+  marker.setAttribute('markerWidth','8');
+  marker.setAttribute('markerHeight','6');
+  marker.setAttribute('refX','8');
+  marker.setAttribute('refY','3');
+  marker.setAttribute('orient','auto');
+  const polygon = document.createElementNS(ns, 'polygon');
+  polygon.setAttribute('points','0 0, 8 3, 0 6');
+  polygon.setAttribute('fill', getCSSVar('--txt-3') || '#3a4870');
+  marker.appendChild(polygon);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  const nodeMap = {};
+  dagNodes.forEach(n => nodeMap[n.id] = n);
+
+  // Edges
+  dagNodes.forEach(node => {
+    node.prereqs.forEach(pid => {
+      const parent = nodeMap[pid];
+      if (!parent) return;
+      const x1 = parent.x, y1 = parent.y + 22;
+      const x2 = node.x,   y2 = node.y - 22;
+      const midY = (y1 + y2) / 2;
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke', getCSSVar('--txt-3') || '#3a4870');
+      path.setAttribute('stroke-width','1.5');
+      path.setAttribute('marker-end','url(#arrowhead)');
+      path.setAttribute('opacity','0.5');
+      svg.appendChild(path);
+    });
+  });
+
+  // Nodes
+  dagNodes.forEach(node => {
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('cursor','pointer');
+    g.setAttribute('transform',`translate(${node.x},${node.y})`);
+
+    // Glow ring for progress
+    if (node.pct > 0) {
+      const ring = document.createElementNS(ns, 'circle');
+      ring.setAttribute('r','28');
+      ring.setAttribute('fill','none');
+      ring.setAttribute('stroke', nodeColor(node.pct) || '#fff');
+      ring.setAttribute('stroke-width','2.5');
+      ring.setAttribute('opacity','0.4');
+      g.appendChild(ring);
+    }
+
+    // Main circle
+    const circle = document.createElementNS(ns, 'circle');
+    circle.setAttribute('r','22');
+    const col = nodeColor(node.pct);
+    circle.setAttribute('fill', col ? col + '25' : (getCSSVar('--bg-raised') || '#1e2f54'));
+    circle.setAttribute('stroke', col || (getCSSVar('--border-str') || '#253550'));
+    circle.setAttribute('stroke-width','2');
+    g.appendChild(circle);
+
+    // Pct arc
+    if (node.pct > 0) {
+      const arc = document.createElementNS(ns, 'circle');
+      const circumference = 2 * Math.PI * 22;
+      const dashLen = (node.pct / 100) * circumference;
+      arc.setAttribute('r','22');
+      arc.setAttribute('fill','none');
+      arc.setAttribute('stroke', col || '#fff');
+      arc.setAttribute('stroke-width','3.5');
+      arc.setAttribute('stroke-dasharray',`${dashLen} ${circumference}`);
+      arc.setAttribute('stroke-dashoffset', (circumference * 0.25).toString());
+      arc.setAttribute('transform','rotate(-90)');
+      arc.setAttribute('opacity','0.9');
+      g.appendChild(arc);
+    }
+
+    // Label
+    const text = document.createElementNS(ns, 'text');
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dy','4px');
+    text.setAttribute('font-size','9');
+    text.setAttribute('font-weight','600');
+    text.setAttribute('font-family','DM Sans, sans-serif');
+    text.setAttribute('fill', getCSSVar('--txt-1') || '#dde4f6');
+    text.textContent = node.label.length > 9 ? node.label.slice(0,8)+'…' : node.label;
+    g.appendChild(text);
+
+    // Pct label below
+    if (node.pct > 0) {
+      const pctTxt = document.createElementNS(ns, 'text');
+      pctTxt.setAttribute('text-anchor','middle');
+      pctTxt.setAttribute('dy','20px');
+      pctTxt.setAttribute('font-size','8');
+      pctTxt.setAttribute('font-family','JetBrains Mono, monospace');
+      pctTxt.setAttribute('fill', col || '#fff');
+      pctTxt.textContent = node.pct + '%';
+      g.appendChild(pctTxt);
+    }
+
+    // Tooltip events
+    const tt = document.getElementById('dag-tt');
+    g.addEventListener('mouseenter', (e) => {
+      tt.innerHTML = `
+        <div class="dag-tt-title">${node.label}</div>
+        <div class="dag-tt-row">Completion: <strong style="color:${nodeColor(node.pct)||'var(--txt-3)'}">${node.pct}%</strong></div>
+        <div class="dag-tt-row">Status: ${node.pct>=80?'✅ Mastered':node.pct>=40?'🟡 In Progress':node.pct>0?'🔴 Started':'⬜ Not Started'}</div>
+        ${node.prereqs.length ? `<div class="dag-tt-row">Prereqs: ${node.prereqs.join(', ')}</div>` : ''}
+      `;
+      tt.classList.add('show');
+    });
+    g.addEventListener('mousemove', (e) => {
+      tt.style.left = (e.clientX + 12) + 'px';
+      tt.style.top  = (e.clientY - 10) + 'px';
+    });
+    g.addEventListener('mouseleave', () => tt.classList.remove('show'));
+
+    svg.appendChild(g);
+  });
+}
+
+function resetDagPan() { dagInit = false; initDAG(); }
+
+/* =========================================================
+   COURSE MAP MODAL
+   ========================================================= */
+const chapters = [
+  { num:1,  name:'Arrays & Hashing',       count:'28 problems', status:'done', pct:94 },
+  { num:2,  name:'Two Pointers',            count:'18 problems', status:'done', pct:88 },
+  { num:3,  name:'Sliding Window',          count:'15 problems', status:'done', pct:83 },
+  { num:4,  name:'Stack & Queue',           count:'20 problems', status:'done', pct:80 },
+  { num:5,  name:'Binary Search',           count:'22 problems', status:'prog', pct:65 },
+  { num:6,  name:'Linked Lists',            count:'19 problems', status:'prog', pct:55 },
+  { num:7,  name:'Trees & BST',             count:'25 problems', status:'prog', pct:48 },
+  { num:8,  name:'Heaps & Priority Queue',  count:'16 problems', status:'none', pct:0  },
+  { num:9,  name:'Backtracking',            count:'18 problems', status:'none', pct:0  },
+  { num:10, name:'Graphs — BFS/DFS',        count:'24 problems', status:'none', pct:0  },
+  { num:11, name:'Dynamic Programming',     count:'38 problems', status:'none', pct:0  },
+  { num:12, name:'Tries & Advanced Trees',  count:'14 problems', status:'none', pct:0  },
+];
+
+function openModal() {
+  const cl = document.getElementById('chapter-list');
+  cl.innerHTML = chapters.map(c => `
+    <div class="ch-item ${c.status==='done'?'done':c.status==='prog'?'prog':''}">
+      <div class="ch-hd">
+        <div class="ch-num">${c.status==='done'?'✓':c.num}</div>
+        <div class="ch-name">${c.name}</div>
+        <div class="ch-cnt">${c.count}</div>
+        <div class="ch-status ${c.status==='done'?'done':c.status==='prog'?'prog':''}">
+          ${c.status==='done'?'Complete':c.status==='prog'?'In Progress':'Locked'}
+        </div>
+      </div>
+      ${c.pct > 0 ? `
+      <div class="ch-prog">
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--txt-3);margin-bottom:5px">
+          <span>Progress</span><span>${c.pct}%</span>
+        </div>
+        <div class="prog-bg"><div class="prog-fill" style="width:${c.pct}%"></div></div>
+      </div>` : ''}
+    </div>`).join('');
+
+  document.getElementById('course-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('course-modal').classList.remove('open');
+}
+
+document.getElementById('course-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* =========================================================
+   AI INTERVIEW HINTS
+   ========================================================= */
+let hintIdx = 2; // hints 1 & 2 already revealed (0-indexed 3,4)
+
+function revealHint() {
+  hintIdx++;
+  const el = document.getElementById('hint-' + hintIdx);
+  if (el) {
+    el.classList.remove('locked');
+    el.classList.add('revealed');
+    el.querySelector('.hint-num').style.background = 'var(--accent)';
+    el.querySelector('.hint-num').style.color = 'var(--logo-fg)';
+    if (hintIdx >= 5) {
+      document.getElementById('ai-complexity-msg').style.display = 'flex';
+    }
+  }
+}
+
+function showSolution() {
+  [3,4,5].forEach(i => {
+    const el = document.getElementById('hint-' + i);
+    if (el) {
+      el.classList.remove('locked');
+      el.classList.add('revealed');
+      el.querySelector('.hint-num').style.background = 'var(--accent)';
+      el.querySelector('.hint-num').style.color = 'var(--logo-fg)';
+    }
+  });
+  document.getElementById('ai-complexity-msg').style.display = 'flex';
+}
+
+function sendAiMsg() {
+  const input = document.getElementById('ai-input');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  const msgs = document.getElementById('ai-msgs');
+
+  // User message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'ai-msg user';
+  userDiv.innerHTML = `
+    <div class="ai-msg-ava" style="background:var(--logo-bg);color:var(--logo-fg)">AJ</div>
+    <div class="ai-bubble">${text}</div>`;
+  msgs.appendChild(userDiv);
+
+  input.value = '';
+  input.style.height = '36px';
+
+  // AI response
+  setTimeout(() => {
+    const aiDiv = document.createElement('div');
+    aiDiv.className = 'ai-msg';
+    aiDiv.innerHTML = `
+      <div class="ai-msg-ava" style="background:var(--accent);color:var(--logo-fg)">AI</div>
+      <div class="ai-bubble">Good thinking! Now consider: what happens at the boundaries? How do you handle the case where <code style="font-family:var(--font-code);font-size:11px;background:var(--bg-raised);padding:1px 4px;border-radius:3px">left === right</code>?</div>`;
+    msgs.appendChild(aiDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 800);
+
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+/* =========================================================
+   VISUALIZER
+   ========================================================= */
+const algoMeta = {
+  bubble:    { name:'Bubble Sort',    tc:'O(n²)',    sc:'O(1)' },
+  selection: { name:'Selection Sort', tc:'O(n²)',    sc:'O(1)' },
+  insertion: { name:'Insertion Sort', tc:'O(n²)',    sc:'O(1)' },
+  merge:     { name:'Merge Sort',     tc:'O(n log n)',sc:'O(n)' },
+  quick:     { name:'Quick Sort',     tc:'O(n log n)',sc:'O(log n)' },
+  binary:    { name:'Binary Search',  tc:'O(log n)', sc:'O(1)' },
+  linear:    { name:'Linear Search',  tc:'O(n)',     sc:'O(1)' },
+  bst:       { name:'BST Traversal',  tc:'O(n)',     sc:'O(h)' },
+  bfs:       { name:'BFS',            tc:'O(V+E)',   sc:'O(V)' },
+  dfs:       { name:'DFS',            tc:'O(V+E)',   sc:'O(V)' },
+  dijkstra:  { name:'Dijkstra',       tc:'O(E log V)',sc:'O(V)' },
+};
+
+let currentAlgo = 'bubble';
+let vizArr = [];
+let vizSteps = [];
+let vizStepIdx = 0;
+let vizPlaying = false;
+let vizTimer = null;
+let comparisons = 0, swaps = 0;
+let vizCanvas = null, vizCtx = null;
+
+function initVisualizer() {
+  vizCanvas = document.getElementById('viz-canvas');
+  if (!vizCanvas) return;
+  const box = vizCanvas.parentElement.getBoundingClientRect();
+  vizCanvas.width  = box.width  || 700;
+  vizCanvas.height = box.height || 380;
+  vizCtx = vizCanvas.getContext('2d');
+  vizShuffle();
+}
+
+function vizShuffle() {
+  vizArr = Array.from({length: 32}, () => Math.floor(Math.random() * 80) + 10);
+  vizSteps = [];
+  vizStepIdx = 0;
+  comparisons = 0; swaps = 0;
+  updateStats();
+  generateSteps();
+  drawViz(vizArr, [], -1, -1);
+}
+
+function generateSteps() {
+  if (currentAlgo === 'bubble' || currentAlgo === 'selection' ||
+      currentAlgo === 'insertion' || currentAlgo === 'merge' || currentAlgo === 'quick') {
+    vizSteps = generateSortSteps([...vizArr], currentAlgo);
+  } else {
+    vizSteps = [];
+    drawViz(vizArr, [], -1, -1);
+  }
+}
+
+function generateSortSteps(arr, algo) {
+  const steps = [];
+  if (algo === 'bubble') {
+    const a = [...arr];
+    for (let i = 0; i < a.length - 1; i++) {
+      for (let j = 0; j < a.length - i - 1; j++) {
+        steps.push({ arr: [...a], compare: [j, j+1], sorted: Array.from({length:i}, (_,k) => a.length-1-k) });
+        if (a[j] > a[j+1]) { [a[j],a[j+1]] = [a[j+1],a[j]]; steps.push({ arr: [...a], swap: [j, j+1], sorted: [] }); }
+      }
+    }
+    steps.push({ arr: [...a], compare: [], sorted: Array.from({length:a.length},(_,k)=>k) });
+  } else if (algo === 'selection') {
+    const a = [...arr];
+    for (let i = 0; i < a.length - 1; i++) {
+      let minIdx = i;
+      for (let j = i+1; j < a.length; j++) {
+        steps.push({ arr: [...a], compare: [minIdx, j], sorted: Array.from({length:i},(_,k)=>k) });
+        if (a[j] < a[minIdx]) minIdx = j;
+      }
+      if (minIdx !== i) { [a[i],a[minIdx]] = [a[minIdx],a[i]]; steps.push({ arr:[...a], swap:[i,minIdx], sorted:[] }); }
+    }
+    steps.push({ arr: [...a], compare: [], sorted: Array.from({length:a.length},(_,k)=>k) });
+  } else if (algo === 'insertion') {
+    const a = [...arr];
+    for (let i = 1; i < a.length; i++) {
+      let j = i;
+      while (j > 0 && a[j] < a[j-1]) {
+        steps.push({ arr:[...a], compare:[j,j-1], sorted:Array.from({length:i},(_,k)=>k) });
+        [a[j],a[j-1]] = [a[j-1],a[j]];
+        steps.push({ arr:[...a], swap:[j,j-1], sorted:[] });
+        j--;
+      }
+    }
+    steps.push({ arr:[...a], compare:[], sorted: Array.from({length:a.length},(_,k)=>k) });
+  } else {
+    // merge & quick — simple bubble fallback for visual
+    return generateSortSteps(arr, 'bubble');
+  }
+  return steps;
+}
+
+function drawViz(arr, highlighted, p1, p2, sorted = []) {
+  if (!vizCtx || !vizCanvas) return;
+  const W = vizCanvas.width, H = vizCanvas.height;
+  vizCtx.clearRect(0, 0, W, H);
+
+  const n = arr.length;
+  const barW = Math.floor((W - 40) / n);
+  const gap   = 2;
+  const maxH  = H - 50;
+  const maxVal = Math.max(...arr, 100);
+
+  const accent  = getCSSVar('--accent') || '#f0c040';
+  const barBase = getCSSVar('--bg-raised') || '#1e2f54';
+  const successC = '#4ecba0';
+  const dangerC  = '#e05555';
+
+  arr.forEach((val, i) => {
+    const bH = Math.floor((val / maxVal) * maxH);
+    const x  = 20 + i * barW;
+    const y  = H - 30 - bH;
+
+    let color = barBase;
+    if (sorted.includes(i)) color = successC;
+    else if (i === p1 || i === p2) color = dangerC;
+    else if (highlighted.includes(i)) color = accent;
+
+    vizCtx.fillStyle = color;
+    vizCtx.beginPath();
+    vizCtx.roundRect ? vizCtx.roundRect(x + gap/2, y, barW - gap, bH, [3, 3, 0, 0]) : vizCtx.rect(x + gap/2, y, barW - gap, bH);
+    vizCtx.fill();
+
+    // Value label for small arrays
+    if (n <= 20) {
+      vizCtx.fillStyle = getCSSVar('--txt-2') || '#7585a8';
+      vizCtx.font = '9px JetBrains Mono, monospace';
+      vizCtx.textAlign = 'center';
+      vizCtx.fillText(val, x + barW/2, H - 14);
+    }
+  });
+}
+
+function redrawViz() {
+  if (vizSteps.length && vizStepIdx < vizSteps.length) {
+    const step = vizSteps[vizStepIdx];
+    drawViz(step.arr, step.compare || [], step.swap ? step.swap[0] : -1, step.swap ? step.swap[1] : -1, step.sorted || []);
+  } else {
+    drawViz(vizArr, [], -1, -1);
+  }
+  drawDonut();
+}
+
+function vizStep() {
+  if (!vizSteps.length) generateSteps();
+  if (vizStepIdx >= vizSteps.length) return;
+  const step = vizSteps[vizStepIdx++];
+  if (step.compare && step.compare.length) comparisons++;
+  if (step.swap) swaps++;
+  drawViz(step.arr, step.compare || [], step.swap?step.swap[0]:-1, step.swap?step.swap[1]:-1, step.sorted || []);
+  updateStats();
+}
+
+function vizPlay() {
+  const btn = document.getElementById('play-btn');
+  if (vizPlaying) {
+    vizPlaying = false;
+    clearInterval(vizTimer);
+    btn.textContent = '▶ Play';
+    return;
+  }
+  vizPlaying = true;
+  btn.textContent = '⏸ Pause';
+  const speed = parseInt(document.getElementById('speed-slider').value);
+  const interval = Math.max(30, 600 - speed * 55);
+  vizTimer = setInterval(() => {
+    if (vizStepIdx >= vizSteps.length) {
+      vizPlaying = false;
+      clearInterval(vizTimer);
+      btn.textContent = '▶ Play';
+      return;
+    }
+    vizStep();
+  }, interval);
+}
+
+function updateSpeed(val) {
+  document.getElementById('speed-val').textContent = val + '×';
+  if (vizPlaying) { vizPlaying = false; clearInterval(vizTimer); vizPlay(); }
+}
+
+function updateStats() {
+  const el = id => document.getElementById(id);
+  if(el('cmp-val')) el('cmp-val').textContent = comparisons;
+  if(el('swp-val')) el('swp-val').textContent = swaps;
+  const meta = algoMeta[currentAlgo];
+  if(meta) {
+    if(el('tc-val')) el('tc-val').textContent = meta.tc;
+    if(el('sc-val')) el('sc-val').textContent = meta.sc;
+  }
+}
+
+function selectAlgo(algo, btn) {
+  document.querySelectorAll('.viz-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentAlgo = algo;
+  const meta = algoMeta[algo];
+  document.getElementById('algo-name-tag').textContent = meta ? meta.name : algo;
+  if (vizPlaying) { vizPlaying = false; clearInterval(vizTimer); document.getElementById('play-btn').textContent = '▶ Play'; }
+  vizShuffle();
+}
+
+function vizReset() {
+  if (vizPlaying) { vizPlaying = false; clearInterval(vizTimer); document.getElementById('play-btn').textContent = '▶ Play'; }
+  vizShuffle();
+}
+
+/* =========================================================
+   RESIZE HANDLER
+   ========================================================= */
+window.addEventListener('resize', () => {
+  if (document.getElementById('page-visualizer').classList.contains('active')) {
+    const box = vizCanvas ? vizCanvas.parentElement.getBoundingClientRect() : null;
+    if (box && vizCanvas) {
+      vizCanvas.width  = box.width;
+      vizCanvas.height = box.height;
+      redrawViz();
+    }
+  }
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+// Auto-init dashboard on load since that's the nav target
+navTo('landing');
+</script>
+</body>
+</html>
