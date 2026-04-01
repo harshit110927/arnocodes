@@ -106,6 +106,69 @@ pip install -r requirements.txt
 python src/main.py
 ```
 
+
+## Run Entire Project Locally (Backend + Frontend + AI)
+
+### 1) Start infrastructure dependencies
+Use Docker for Postgres and Redis:
+
+```bash
+docker compose up -d postgres redis
+```
+
+### 2) Start backend
+
+```bash
+cd backend
+go mod download
+go run cmd/api/main.go
+```
+
+Backend runs at `http://localhost:8080`.
+
+### 3) Start AI service
+
+```bash
+cd ai
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python src/main.py
+```
+
+AI service runs at `http://localhost:5000`.
+
+### 4) Start frontend
+Create `frontend/.env.local` with Supabase and API settings:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
+
+Then run:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:3000`.
+
+### 5) Validate local API behavior
+
+```bash
+curl -s http://localhost:8080/api/v1/health | jq
+curl -s http://localhost:8080/api/v1/profiles/me/status -H 'X-User-ID: 00000000-0000-0000-0000-000000000001' | jq
+```
+
+For complete local testing flows, use:
+- `docs/API_LOCAL_TESTING.md`
+- `docs/LOCAL_TESTING_WITH_TEST_JS.md`
+- `docs/FRONTEND_IMPLEMENTATION_CONTEXT.md`
+
 ## Environment Variables
 
 Each service has an `.env.example` file. Copy it to `.env` and update the values:

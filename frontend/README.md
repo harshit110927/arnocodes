@@ -1,44 +1,41 @@
 # Frontend (Next.js)
 
 ## Description
-Frontend application built with Next.js, React, and TypeScript.
+Frontend dashboard built with Next.js, React, and TypeScript. The UI is now aligned to `frontend/reference.html` and connected to real backend endpoints.
 
 ## Structure
-- `src/app/` - Next.js App Router pages
-- `src/components/` - Reusable React components
+- `src/app/` - App Router pages
+- `src/components/` - Reusable components
+- `src/lib/api.ts` - Authenticated API client + endpoint wrappers
+
+## Environment Variables
+Create `frontend/.env.local`:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+```
 
 ## Running Locally
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
 ```
 
-## Environment Variables
-Create `.env.local` file for environment-specific configuration.
+Open `http://localhost:3000`.
 
-## Features
-- Next.js 16+ with App Router
-- TypeScript support
-- React 18+
-- Minimal page setup
+## Backend endpoints used by frontend
+- `GET /api/v1/profiles/me/status`
+- `GET /api/v1/dashboard`
+- `GET /api/v1/course/structure`
+- `GET /api/v1/profiles/me/platform-connections`
+- `POST /api/v1/profiles/me/platform-connections`
+- `POST /api/v1/platform-sync/trigger`
 
-
-## Auth Flow
-- Supabase client is initialized in `src/lib/supabase.ts` using:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Login and signup pages live at `/login` and `/signup` (email/password).
-- Session persistence is handled by Supabase JS client.
-- Route guard (`src/components/AuthGuard.tsx`) redirects unauthenticated users to `/login` for all routes except `/login` and `/signup`.
-- API calls should use `src/lib/api.ts`, which forwards `Authorization: Bearer <access_token>` to backend.
-- Logout is implemented via `supabase.auth.signOut()` and redirects to `/login`.
+## Debugging
+For implementation context and debugging runbook, see:
+- `docs/FRONTEND_IMPLEMENTATION_CONTEXT.md`
+- `docs/API_LOCAL_TESTING.md`
+- `docs/LOCAL_TESTING_WITH_TEST_JS.md`
